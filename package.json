@@ -1,0 +1,47 @@
+{
+  "name": "yt-chord-sheet",
+  "version": "1.0.0",
+  "description": "Generate chord sheets (chords over lyrics, ChordPro, Markdown, JSON) from YouTube videos or audio files. Pure-JS chord, key, tempo and beat detection.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./core": "./src/core.js",
+    "./browser": "./dist/yt-chord-sheet.esm.js"
+  },
+  "bin": {
+    "ytchords": "./bin/ytchords.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "dist",
+    "web",
+    "scripts",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build-web.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "chords",
+    "chord-recognition",
+    "chord-sheet",
+    "chordpro",
+    "youtube",
+    "music-information-retrieval",
+    "beat-tracking",
+    "key-detection",
+    "guitar"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}
