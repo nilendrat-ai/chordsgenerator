@@ -58,9 +58,11 @@ form.url input:focus{border-color:var(--ink);background-color:var(--card)}
 .fileview .fname{font:800 clamp(18px,1.7vw,24px)/1.2 Archivo,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fileview audio{width:min(100%,440px)}
 .fileview video{position:absolute;inset:0;width:100%;height:100%;background:#000}
+.fileview.vid video.novid{position:static;width:min(100%,440px);height:54px;background:transparent}
+.fileview .fnote{font-size:14px;color:#c9cbd0;max-width:40ch}
 .alt{margin:22px 0 0;color:var(--mute);font-size:15px;max-width:52ch}
 .alt .link{font-size:15px;padding:0;color:var(--ink);font-weight:600}
-body.drop::after{content:'Drop the audio file to get its chords';position:fixed;inset:12px;border:3px dashed var(--acc);border-radius:20px;background:color-mix(in oklab,var(--bg) 88%,transparent);display:grid;place-items:center;font:800 clamp(20px,3vw,30px) Archivo,sans-serif;z-index:50;pointer-events:none}
+body.drop::after{content:'Drop the song file to get its chords';position:fixed;inset:12px;border:3px dashed var(--acc);border-radius:20px;background:color-mix(in oklab,var(--bg) 88%,transparent);display:grid;place-items:center;font:800 clamp(20px,3vw,30px) Archivo,sans-serif;z-index:50;pointer-events:none}
 .analyser{padding:16px 18px;display:grid;gap:12px}
 .state{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mute)}
 .listening .state{color:var(--acc)}
@@ -168,8 +170,8 @@ details.menu summary::-webkit-details-marker{display:none}
     <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link" aria-label="YouTube video link" required>
     <button class="btn primary" id="go" type="submit">Analyse</button>
   </form>
-  <button class="btn" id="openFile" type="button" title="Get chords from an MP3 or other audio file" aria-label="Open MP3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg><span class="lbl">Open MP3</span></button>
-  <input type="file" id="file" accept="audio/*,video/mp4,video/webm,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac" hidden>
+  <button class="btn" id="openFile" type="button" title="Get chords from an audio or video file: MP3, MP4, MOV, M4A, WAV…" aria-label="Open MP3 or MP4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg><span class="lbl">Open MP3 / MP4</span></button>
+  <input type="file" id="file" accept="audio/*,video/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.mp4,.m4v,.mov,.mkv,.webm" hidden>
   <button class="btn" id="reset" type="button" title="Stop, clear this video and start over"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
 </header>
 
@@ -184,7 +186,7 @@ details.menu summary::-webkit-details-marker{display:none}
         <li><b>2</b><span>When asked, share <strong>This tab</strong> with <strong>tab audio</strong> on. The video plays from the start.</span></li>
         <li><b>3</b><span>When it ends, your chart is ready and saved for next time.</span></li>
       </ol>
-      <p class="alt">Have the song as a file? <button class="link" id="openFile2" type="button">Open an MP3</button> (or M4A, WAV, OGG, FLAC), or drop it anywhere on this page. There's no sharing step, and the chart is ready in seconds.</p>
+      <p class="alt">Have the song as a file? <button class="link" id="openFile2" type="button">Open an MP3 or MP4</button> (or MOV, M4A, WAV, OGG, FLAC), or drop it anywhere on this page. There's no sharing step, and the chart is ready in seconds.</p>
     </div>
     <div class="card mock" aria-hidden="true" id="mock"></div>
   </section>
@@ -858,9 +860,12 @@ details.menu summary::-webkit-details-marker{display:none}
     return `<div class="bars">${prog.slice(0, 4).map((p, i) => tile(p, i === 2)).join('')}</div><div class="bars">${prog.slice(4).map((p) => tile(p)).join('')}</div>`;
   })();
 
-  /* ================= audio files (MP3, M4A, WAV…): decoded and analysed in one go, no sharing ================= */
+  /* ================= audio and video files (MP3, MP4, MOV, M4A, WAV…): decoded and analysed in one go, no sharing ================= */
   const MAX_FILE_SECS = 20 * 60;
-  const AUDIO_EXT = /\.(mp3|m4a|aac|mp4|wav|ogg|oga|opus|flac|webm)$/i;
+  const MAX_FILE_BYTES = 1.5 * 1024 ** 3; // browsers can't read much more than this into memory in one go
+  const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
+  const VIDEO_EXT = /\.(mp4|m4v|mov|mkv|webm)$/i;
+  const NOTE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
   function clearMedia() {
     if (media) { media.pause(); media.removeAttribute('src'); media.load(); }
     if (mediaUrl) URL.revokeObjectURL(mediaUrl);
@@ -869,16 +874,19 @@ details.menu summary::-webkit-details-marker{display:none}
     $('fileView').hidden = true;
     $('ytwrap').hidden = false;
   }
+  // Pulls the sound out of an audio or video file. Decoding at 22,050 Hz mono keeps memory low
+  // (the analyser works at 11,025 Hz anyway); a video's picture is skipped.
   async function decodeFile(file) {
-    const buf = await file.arrayBuffer();
     try {
-      // Decoding at 22,050 Hz mono keeps memory low; the analyser works at 11,025 Hz anyway.
-      return await new OfflineAudioContext(1, 1, 22050).decodeAudioData(buf.slice(0));
+      return await new OfflineAudioContext(1, 1, 22050).decodeAudioData(await file.arrayBuffer());
     } catch {
+      // Some browsers only decode at the device's own rate. The first buffer was handed over, so read the file again.
       const ctx = new AudioContext();
-      try { return await ctx.decodeAudioData(buf); } finally { ctx.close(); }
+      try { return await ctx.decodeAudioData(await file.arrayBuffer()); } finally { ctx.close(); }
     }
   }
+  const fail = (state, text) => { building = false; setState(state); render(); msg(text, true); };
+  const sizeText = (b) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1024 ** 2))} MB`);
   async function openFile(file) {
     if (!file) return;
     if (cap) stopListening(true);
@@ -896,40 +904,43 @@ details.menu summary::-webkit-details-marker{display:none}
     building = job;
     setIdleUi(false);
     render();
-    if (!/^(audio|video)\//.test(file.type) && !AUDIO_EXT.test(file.name)) {
-      building = false;
-      setState('Not an audio file');
-      render();
-      return msg(`“${esc(file.name)}” isn’t an audio file. Open an MP3, M4A, WAV, OGG or FLAC file.`, true);
+    const isVideo = file.type.startsWith('video/') || (!file.type.startsWith('audio/') && VIDEO_EXT.test(file.name));
+    if (!isVideo && !file.type.startsWith('audio/') && !AUDIO_EXT.test(file.name)) {
+      return fail('Not a song file', `“${esc(file.name)}” isn’t an audio or video file. Open an MP3, MP4, MOV, M4A, WAV, OGG or FLAC file.`);
     }
-    // The player: a video file shows its picture, an audio file shows its name.
+    if (file.size > MAX_FILE_BYTES) {
+      return fail('File too big', `That file is ${sizeText(file.size)}, which is more than a browser can open (about 1.5 GB). Trim the video, or save just its sound as an MP3 or M4A.`);
+    }
+    // The player: a video shows its picture; an audio file (or a video with no picture) shows the song's name.
     mediaUrl = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith('video/');
     media = document.createElement(isVideo ? 'video' : 'audio');
     Object.assign(media, { controls: true, preload: 'auto', src: mediaUrl, playsInline: true });
-    if (!isVideo) {
-      $('fileView').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><div class="fname">${esc(title)}</div>`;
-    }
+    $('fileView').innerHTML = `${NOTE_ICON}<div class="fname">${esc(title)}</div>`;
     $('fileView').append(media);
+    if (isVideo) {
+      $('fileView').classList.add('vid');
+      media.addEventListener('loadedmetadata', () => media.classList.toggle('novid', !media.videoWidth));
+    } else {
+      $('fileView').classList.remove('vid');
+    }
+    media.addEventListener('error', () => {
+      if (media?.src !== mediaUrl) return;
+      media.classList.add('novid');
+      $('fileView').querySelector('.fname').insertAdjacentHTML('afterend', `<div class="fnote">Your browser can’t play this ${isVideo ? 'video' : 'file'}, so the chart can’t follow along. ${isVideo ? 'An MP4 (H.264) plays everywhere.' : ''}</div>`);
+    });
     $('fileView').hidden = false;
     $('ytwrap').hidden = true;
-    setState('Reading file');
-    msg('Reading the file…');
+    setState(isVideo ? 'Reading video' : 'Reading file');
+    msg(isVideo ? `Taking the sound out of the video (${sizeText(file.size)})…` : 'Reading the file…');
     let audio;
     try { audio = await decodeFile(file); } catch { audio = null; }
     if (building !== job) return; // reset, or another song opened meanwhile
     if (!audio) {
-      building = false;
-      setState('Couldn’t read file');
-      render();
-      return msg('This file couldn’t be decoded by your browser. Try an MP3, M4A or WAV file.', true);
+      return fail('Couldn’t read file', isVideo
+        ? 'Couldn’t get any sound from this video. It may have no sound track, or use a sound format your browser can’t read. Try an MP4, or save the sound as an MP3.'
+        : 'This file couldn’t be decoded by your browser. Try an MP3, M4A or WAV file.');
     }
-    if (audio.duration < 8) {
-      building = false;
-      setState('Too short');
-      render();
-      return msg('That file is under 8 seconds long. Open a longer recording.', true);
-    }
+    if (audio.duration < 8) return fail('Too short', 'That file is under 8 seconds long. Open a longer recording.');
     const n = Math.min(audio.length, Math.floor(MAX_FILE_SECS * audio.sampleRate));
     const x = new Float32Array(n);
     for (let k = 0; k < audio.numberOfChannels; k++) {
@@ -961,7 +972,7 @@ details.menu summary::-webkit-details-marker{display:none}
   });
 
   if (!navigator.mediaDevices?.getDisplayMedia) {
-    msg('This browser can’t share tab audio, so it can’t listen to YouTube videos. Open an MP3 instead, or use desktop Chrome or Edge.', true);
+    msg('This browser can’t share tab audio, so it can’t listen to YouTube videos. Open an MP3 or MP4 instead, or use desktop Chrome or Edge.', true);
   }
   window.chordSheetApp = { startListening, stopListening, openFile }; // handy for scripting and tests
 
