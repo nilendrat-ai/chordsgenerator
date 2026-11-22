@@ -3,180 +3,235 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YouTube Chord Sheet</title>
-<link rel="icon" href="data:,">
+<title>Chordsheet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff4a1c'/%3E%3Cpath d='M12 22V9l10-2v13' stroke='white' stroke-width='2.5' fill='none'/%3E%3Ccircle cx='10' cy='22' r='3' fill='white'/%3E%3Ccircle cx='20' cy='20' r='3' fill='white'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
-/* VOICE  everyday tool for musicians: confident, uncluttered
-   IDEA   a music stand: the video and the chord you're on, with the printed chart beside it
-   PICTURE the live chord, huge, over a coloured chord timeline with a playhead
-   COLOUR white paper, black ink, vermilion for listening and the playhead; each chord root has its own hue
-   TYPE   Archivo 800 for chords and titles, Inter for UI, JetBrains Mono for the sheet
-   LAYOUT laptop: URL bar across the top, stand left, sheet right; phone: stacked */
-:root{color-scheme:light dark;--bg:light-dark(#fff,#111214);--ink:light-dark(#111,#f1f1ee);--mute:light-dark(#5f5f5a,#a3a39c);--panel:light-dark(#f2f2ef,#1b1c1f);--line:light-dark(#dcdcd6,#2c2d31);--acc:#ff4a1c;--err:light-dark(#c4260a,#ff7a5c)}
+/* VOICE  everyday tool for musicians: calm, app-like, nothing extra
+   IDEA   a music stand: the video and the live chord on the left, the printed chart filling the rest
+   PICTURE the chord chart itself, a grid of bar tiles tinted by chord, the current one lit
+   COLOUR soft grey ground, white cards, black ink, vermilion for listening and the playhead; each chord root has its own hue
+   TYPE   Archivo 800 for chords and titles, Inter for UI
+   LAYOUT full-height app: top bar with the link box; left column video + analyser + timeline; chart fills the right. Phone: stacked */
+:root{color-scheme:light dark;--bg:light-dark(#eef0f2,#0e0f11);--card:light-dark(#fff,#17191c);--ink:light-dark(#111,#f1f1ee);--mute:light-dark(#62646a,#9a9ca3);--line:light-dark(#e1e3e6,#26292e);--soft:light-dark(#f5f6f7,#1e2125);--acc:#ff4a1c;--err:light-dark(#c4260a,#ff7a5c);--r:14px}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 [hidden]{display:none!important}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
-.wrap{max-width:1240px;margin:0 auto;padding:0 max(4vw,16px)}
-header{padding:28px 0 16px;border-bottom:1px solid var(--line)}
-h1{font:800 clamp(30px,4vw,44px)/1.05 Archivo,system-ui,sans-serif;letter-spacing:-.02em;margin:0 0 6px}
-.lede{color:var(--mute);margin:0 0 18px;max-width:66ch}
-form.url{display:flex;gap:10px;flex-wrap:wrap}
-form.url input{flex:1 1 320px;font:16px Inter,sans-serif;padding:14px 16px;border:2px solid var(--ink);border-radius:10px;background:var(--bg);color:var(--ink)}
-button,select,.btn{font:500 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
-button.go{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600;padding:0 22px}
-button:hover,.btn:hover{border-color:var(--ink)}
-button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,.btn:focus-within{outline:3px solid var(--acc);outline-offset:2px}
-button:disabled{opacity:.5;cursor:progress}
-.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:12px;color:var(--mute);font-size:15px}
-.row label{display:flex;gap:8px;align-items:center}
-.linkish{background:none;border:0;padding:0;min-height:44px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer}
-.btn input,.linkish input{display:none}
-.row label.linkish{display:inline-flex}
-#status{min-height:28px;margin-top:8px;font-size:15px}
-#status.err{color:var(--err)}
-.steps{display:inline-flex;flex-wrap:wrap;gap:6px}
-.steps span{padding:3px 10px;border-radius:99px;background:var(--panel);color:var(--mute)}
-.steps span.on{background:var(--ink);color:var(--bg)}
-.steps span.done{color:var(--ink)}
-main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;padding:24px 0 48px}
-.stand{display:grid;gap:14px;align-content:start}
-@media(min-width:900px){.stand{position:sticky;top:12px}}
-.screen{aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
-.screen.audio{aspect-ratio:auto;height:84px}
-.screen iframe,.screen #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
-.screen .art{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:800 clamp(20px,2.6vw,28px)/1.15 Archivo,sans-serif;text-align:center;padding:20px;background:linear-gradient(135deg,#1d1d22,#3a1a12)}
-audio{width:100%}
-.listen{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-button.rec{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:10px;padding:0 20px}
-button.rec i{width:10px;height:10px;border-radius:50%;background:#fff}
-.listening button.rec i{animation:pulse 1s ease-in-out infinite}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:16px;padding:12px max(2vw,16px);background:var(--card);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font:800 19px Archivo,system-ui,sans-serif;letter-spacing:-.01em;white-space:nowrap;text-decoration:none;color:inherit}
+.brand svg{width:30px;height:30px}
+form.url{flex:1;display:flex;gap:8px;max-width:820px;margin-left:auto;margin-right:auto}
+form.url input{flex:1;height:46px;padding:0 16px 0 44px;border:1px solid var(--line);border-radius:12px;background:var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1'/%3E%3C/svg%3E") 14px center/18px no-repeat;font-size:16px}
+form.url input:focus{border-color:var(--ink);background-color:var(--card)}
+.btn{height:46px;padding:0 20px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.btn.rec{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.sm{height:38px;padding:0 14px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:progress}
+.link{background:none;border:0;padding:6px 0;color:var(--mute);text-decoration:underline;text-underline-offset:3px;font-size:14px}
+.link:hover{color:var(--ink)}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
+.listening .dot{animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
-@media(prefers-reduced-motion:reduce){.listening button.rec i{animation:none}}
-.hint{flex-basis:100%;font-size:14px;color:var(--mute);margin:0}
-.now{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 22px;align-items:end;padding:18px 20px;border-radius:12px;background:var(--panel)}
-.listening .now{box-shadow:inset 0 0 0 2px var(--acc)}
-.now .chord{font:800 clamp(56px,9vw,96px)/.9 Archivo,sans-serif;letter-spacing:-.03em;grid-row:span 2;min-width:2.2ch}
-.now .next{font-size:15px;color:var(--mute)}
-.now .next b{font:800 26px Archivo,sans-serif;color:var(--ink);margin-right:6px}
-.now .lyric{font-size:17px;font-weight:500;min-height:1.6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
-.bar i{display:block;height:100%;width:0;background:var(--acc)}
-.tl{position:relative;height:54px;border-radius:8px;overflow:hidden;background:var(--panel);cursor:pointer}
-.tl div{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:700 13px Inter,sans-serif;overflow:hidden;white-space:nowrap;box-shadow:inset -1px 0 0 var(--bg)}
-.tl .head{position:absolute;top:0;bottom:0;width:3px;background:var(--acc);box-shadow:0 0 0 1px var(--bg);pointer-events:none;left:0;z-index:1}
-.tlx{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--mute);margin-top:-8px}
-.facts{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:baseline}
-.facts h2{font:800 clamp(24px,3vw,32px)/1.1 Archivo,sans-serif;margin:0;letter-spacing:-.02em;flex-basis:100%}
-.facts .by{flex-basis:100%;color:var(--mute);margin-top:-6px}
-.facts dl{display:flex;flex-wrap:wrap;gap:4px 22px;margin:0}
-.facts dt{font-size:13px;color:var(--mute)}
-.facts dd{margin:0;font-weight:600;white-space:nowrap}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
-.chips span{font:700 15px Inter,sans-serif;padding:6px 12px;border-radius:8px}
-.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
-.tools label,.tools .lab{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--mute)}
-.stepper{display:flex;align-items:center}
-.stepper button{width:44px;padding:0}
-.stepper output{min-width:3.4ch;text-align:center;font-weight:600;color:var(--ink);white-space:nowrap}
-.lyr{border-bottom:1px solid var(--line)}
-.lyr #lyrInfo{flex-basis:100%;font-size:14px;color:var(--mute);margin:0}
-details{flex-basis:100%}
-summary{cursor:pointer;min-height:32px;color:var(--ink);font-size:15px}
-textarea{width:100%;min-height:120px;font:14px/1.4 "JetBrains Mono",ui-monospace,monospace;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin:8px 0}
-.note{font-size:15px;color:var(--mute);margin:10px 0 0}
-pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margin:14px 0 0;padding:18px;border-radius:12px;border:1px solid var(--line);min-height:300px;white-space:pre;position:relative}
-@media(min-width:900px){#sheet pre{max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain}}
-.chord-sheet .ch{cursor:pointer;border-radius:4px;font-weight:700;transition:background-color .12s}
-.chord-sheet .ch:hover{background:color-mix(in oklab,var(--acc) 18%,transparent)}
-.chord-sheet .ch.on{background:var(--acc);color:#fff;box-shadow:0 0 0 2px var(--acc)}
-.chord-sheet .ly{cursor:pointer;border-radius:3px}
-.chord-sheet .ly.on{background:color-mix(in oklab,var(--acc) 16%,transparent);font-weight:700}
-.tl div.on{box-shadow:inset 0 0 0 3px var(--ink);z-index:1}
-button.rec.nudge{animation:nudge 1s ease-in-out 4}
-@keyframes nudge{50%{transform:scale(1.06);box-shadow:0 0 0 6px color-mix(in oklab,var(--acc) 35%,transparent)}}
-@media(prefers-reduced-motion:reduce){button.rec.nudge{animation:none}}
-.small{font-size:13px;color:var(--mute)}
-@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:600px){.now{grid-template-columns:minmax(0,1fr)}.now .chord{grid-row:auto}pre{font-size:13px;padding:12px}}
-@media(prefers-reduced-motion:no-preference){.bar i{transition:width .1s linear}}
+.nudge{animation:nudge .9s ease-in-out 4}
+@keyframes nudge{50%{transform:scale(1.05);box-shadow:0 0 0 6px color-mix(in oklab,var(--acc) 30%,transparent)}}
+
+/* workspace */
+.work{display:grid;grid-template-columns:minmax(340px,min(36vw,560px)) minmax(0,1fr);gap:16px;padding:16px max(2vw,16px);min-height:0}
+.left{display:flex;flex-direction:column;gap:16px;min-height:0;overflow:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.video{aspect-ratio:16/9;border-radius:var(--r);overflow:hidden;background:#000;position:relative;flex:none}
+.video iframe,.video #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
+.analyser{padding:16px 18px;display:grid;gap:12px}
+.state{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mute)}
+.listening .state{color:var(--acc)}
+.nowrow{display:flex;align-items:flex-end;gap:18px}
+.chord{font:800 clamp(52px,6vw,84px)/.9 Archivo,sans-serif;letter-spacing:-.03em;min-width:1.6ch;color:var(--mute)}
+.nowmeta{display:grid;gap:2px;padding-bottom:6px}
+.next{color:var(--mute);font-size:14px}
+.next b{font:800 22px Archivo,sans-serif;color:var(--ink);margin-right:4px}
+.prog{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--acc)}
+.actions{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.msg{font-size:14px;color:var(--mute);margin:0}
+.msg.err{color:var(--err)}
+.steps{display:inline-flex;gap:6px;flex-wrap:wrap}
+.steps span{padding:2px 10px;border-radius:99px;background:var(--soft);font-size:13px;color:var(--mute)}
+.steps span.on{background:var(--ink);color:var(--card)}
+.tlwrap{padding:12px 14px;display:grid;gap:6px}
+.tl{position:relative;height:40px;border-radius:8px;overflow:hidden;background:var(--soft);cursor:pointer}
+.tl div{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:700 12px Inter,sans-serif;overflow:hidden;white-space:nowrap;box-shadow:inset -1px 0 0 var(--card)}
+.tl div.on{box-shadow:inset 0 0 0 2px var(--ink)}
+.tl .head{position:absolute;top:0;bottom:0;width:3px;background:var(--acc);pointer-events:none;left:0;z-index:2}
+.tlx{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+
+/* sheet panel */
+.sheet{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0}
+.shead{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.title{flex:1 1 260px}
+.title h1{font:800 clamp(20px,2vw,26px)/1.15 Archivo,sans-serif;letter-spacing:-.01em;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.facts{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--mute);font-size:14px;margin-top:2px}
+.facts b{color:var(--ink);font-weight:600}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.seg{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;height:38px;overflow:hidden;background:var(--card)}
+.seg>span{padding:0 10px;font-size:13px;color:var(--mute)}
+.seg button{border:0;background:none;width:34px;height:100%;font-size:18px}
+.seg button:hover{background:var(--soft)}
+.seg output{min-width:2.6ch;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.seg select{border:0;background:none;height:100%;padding:0 8px;font-weight:600}
+.seg label{display:flex;align-items:center;gap:6px;padding:0 12px;height:100%;font-size:14px;cursor:pointer}
+details.menu{position:relative}
+details.menu summary{list-style:none}
+details.menu summary::-webkit-details-marker{display:none}
+.menu .list{position:absolute;right:0;top:44px;z-index:5;min-width:210px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgb(0 0 0/.12);display:grid}
+.menu .list button{border:0;background:none;text-align:left;padding:9px 12px;border-radius:8px;font-size:14px}
+.menu .list button:hover{background:var(--soft)}
+.chart{overflow:auto;padding:18px 20px 40px;scroll-behavior:smooth}
+.note{color:var(--mute);font-size:14px;margin:0 0 14px}
+.line{display:grid;grid-template-columns:3.2em minmax(0,1fr);gap:10px;align-items:stretch;margin-bottom:10px}
+.line time{font-size:12px;color:var(--mute);padding-top:8px;font-variant-numeric:tabular-nums}
+.bars{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:8px}
+.bar{display:flex;gap:3px;min-height:64px;padding:3px;border-radius:10px;background:var(--soft);outline:2px solid transparent;transition:outline-color .15s}
+.bar.cur{outline-color:var(--ink)}
+.bar.pickup{opacity:.75}
+.c{flex:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font:800 clamp(17px,1.5vw,24px) Archivo,sans-serif;letter-spacing:-.01em;background:color-mix(in oklab,var(--c) 26%,var(--card));color:var(--ink);cursor:pointer;transition:background-color .12s,color .12s;white-space:nowrap;overflow:hidden}
+.c.nc{background:transparent;color:var(--mute);font-weight:600;font-size:13px}
+.c:hover{background:color-mix(in oklab,var(--c) 45%,var(--card))}
+.c.on{background:var(--c);color:var(--cf)}
+.empty{display:grid;place-items:center;text-align:center;height:100%;color:var(--mute);padding:24px}
+.empty .big{font:800 26px/1.2 Archivo,sans-serif;color:var(--ink);margin:12px 0 6px}
+.skel{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(520px,80%);margin:18px auto 0}
+.skel i{height:48px;border-radius:10px;background:var(--soft)}
+
+/* welcome */
+.welcome{overflow:auto;padding:clamp(24px,6vh,72px) max(4vw,16px)}
+.hero{max-width:980px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:center}
+.hero h2{font:800 clamp(32px,4.4vw,54px)/1.04 Archivo,sans-serif;letter-spacing:-.025em;margin:0 0 14px;text-wrap:balance}
+.hero p{font-size:17px;color:var(--mute);margin:0 0 22px;max-width:46ch}
+.how{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.how li{display:flex;gap:12px;align-items:flex-start}
+.how b{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--card);font-size:13px}
+.mock{padding:16px;display:grid;gap:8px}
+.mock .bars{--n:4}
+.mock .bar{min-height:54px}
+.recent{max-width:980px;margin:48px auto 0}
+.recent h3{font:700 16px Inter,sans-serif;margin:0}
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.rcard{display:grid;text-align:left;padding:0;overflow:hidden;border:1px solid var(--line);background:var(--card);border-radius:var(--r)}
+.rcard img{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--soft);display:block}
+.rcard span{padding:10px 12px 12px;font-size:14px;font-weight:600;line-height:1.35}
+.rcard small{display:block;color:var(--mute);font-weight:500;margin-top:2px}
+.rcard:hover{border-color:var(--ink)}
+
+@media(max-width:900px){
+  body{overflow:auto;display:block}
+  .work{grid-template-columns:minmax(0,1fr)}
+  .left{overflow:visible}
+  .sheet{min-height:60vh}
+  .chart{overflow:visible}
+  .hero{grid-template-columns:minmax(0,1fr)}
+  .top{flex-wrap:wrap}
+  form.url{flex-basis:100%;order:2}
+  #reset{margin-left:auto}
+}
+@media(max-width:520px){.btn{padding:0 14px}.line{grid-template-columns:minmax(0,1fr)}.line time{padding:0}}
+@media(prefers-reduced-motion:reduce){.listening .dot,.nudge{animation:none}.chart{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1>Chord sheet from a YouTube video</h1>
-    <p class="lede">Runs entirely in your browser, with no server or upload. Paste a link and press Get chords. Share this tab's audio when asked, and the video plays from the start while the chords are worked out. Once it's done, the sheet follows the video as you play along.</p>
-    <form class="url" id="urlForm">
-      <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube video URL" required>
-      <button class="go" id="go" type="submit">Get chords</button>
-    </form>
-    <div class="row">
-      <label>Chords <select id="vocab"><option value="majmin">Major / minor</option><option value="sevenths">+ sevenths</option><option value="full">Everything (sus, dim, aug)</option></select></label>
-      <span>No link handy? <button type="button" class="linkish" id="demo">Play the demo song</button> or <label class="linkish">open an audio file<input type="file" id="file" accept="audio/*,video/*"></label></span>
-    </div>
-    <div id="status" aria-live="polite"></div>
-  </div>
+<header class="top">
+  <a class="brand" href="./" id="home" aria-label="Chordsheet home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#ff4a1c"/><path d="M12 22V9l10-2v13" stroke="#fff" stroke-width="2.5" fill="none"/><circle cx="10" cy="22" r="3" fill="#fff"/><circle cx="20" cy="20" r="3" fill="#fff"/></svg>
+    Chordsheet
+  </a>
+  <form class="url" id="urlForm">
+    <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link" aria-label="YouTube video link" required>
+    <button class="btn primary" id="go" type="submit">Analyse</button>
+  </form>
+  <button class="btn" id="reset" type="button" title="Stop, clear this video and start over"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
 </header>
 
-<div class="wrap">
-  <main id="main">
-    <section class="stand" id="stand" aria-label="Player">
-      <div class="screen audio" id="screen"><div class="art" id="art">Loading…</div><div id="yt" hidden></div></div>
-      <audio id="audio" controls hidden></audio>
-      <div class="listen">
-        <button type="button" class="rec" id="listen"><i></i><span id="listenLabel">Listen &amp; get chords</span></button>
-        <button type="button" id="stop" hidden>Stop &amp; build sheet</button>
-        <button type="button" class="linkish" id="other">Listen to another tab instead</button>
-        <p class="hint" id="hint">The page can only hear the video once you share it. In the dialog, choose <b>This tab</b> and keep <b>Also share tab audio</b> switched on. Works in desktop Chrome and Edge.</p>
-      </div>
-      <div class="now">
-        <div class="chord" id="nowChord">–</div>
-        <div class="next" id="next">Press play</div>
-        <div class="lyric" id="lyric"></div>
-        <div class="bar"><i id="barFill"></i></div>
-      </div>
-      <div class="tl" id="tl" role="slider" aria-label="Song position" aria-valuemin="0" tabindex="0"><span class="head" id="head"></span></div>
-      <div class="tlx"><span id="t0">0:00</span><span class="small" id="tlHint">Click the strip to jump</span><span id="t1">0:00</span></div>
-    </section>
+<!-- Before a video is loaded -->
+<main class="welcome" id="welcome">
+  <section class="hero">
+    <div>
+      <h2>Turn any YouTube song into a chord chart</h2>
+      <p>Everything runs in your browser, with nothing uploaded. Paste a link above, let it listen once, then play along as the chords light up.</p>
+      <ol class="how">
+        <li><b>1</b><span>Paste a YouTube link and press <strong>Analyse</strong>.</span></li>
+        <li><b>2</b><span>When asked, share <strong>This tab</strong> with <strong>tab audio</strong> on. The video plays from the start.</span></li>
+        <li><b>3</b><span>When it ends, your chart is ready and saved for next time.</span></li>
+      </ol>
+    </div>
+    <div class="card mock" aria-hidden="true" id="mock"></div>
+  </section>
+  <section class="recent" id="recent" hidden>
+    <div class="rhead"><h3>Recent</h3><button class="link" id="clearSaved" type="button">Clear saved charts</button></div>
+    <div class="rgrid" id="rgrid"></div>
+  </section>
+</main>
 
-    <section aria-label="Chord sheet">
-      <div class="facts" id="facts"></div>
-      <div class="chips" id="chips"></div>
-      <div class="tools">
-        <span class="lab">Transpose <span class="stepper"><button type="button" id="down" aria-label="Down a semitone">−</button><output id="tr">0</output><button type="button" id="up" aria-label="Up a semitone">+</button></span></span>
-        <label>Capo <select id="capo"><option value="none">None</option><option value="auto">Easiest</option>
-          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></label>
-        <label><input type="checkbox" id="simplify"> Simplify</label>
-        <select id="format" aria-label="Sheet format"><option value="text">Text</option><option value="chordpro">ChordPro</option><option value="markdown">Markdown</option><option value="json">JSON</option></select>
-        <button type="button" id="copy">Copy</button>
-        <button type="button" id="save">Download</button>
+<!-- Workspace -->
+<main class="work" id="work" hidden>
+  <section class="left" aria-label="Video and analyser">
+    <div class="video"><div id="yt"></div></div>
+    <div class="card analyser" id="analyser">
+      <div class="state" id="state"><span class="dot"></span><span id="stateText">Not listening</span></div>
+      <div class="nowrow">
+        <div class="chord" id="nowChord">–</div>
+        <div class="nowmeta"><div class="next" id="next">The chart appears after one listen</div></div>
       </div>
-      <div class="tools lyr">
-        <span class="lab">Lyrics</span>
-        <button type="button" id="findLyr">Find synced lyrics</button>
-        <span class="lab">Timing <span class="stepper"><button type="button" id="lyrEarly" aria-label="Lyrics earlier">−</button><output id="lyrOff">0.0s</output><button type="button" id="lyrLate" aria-label="Lyrics later">+</button></span></span>
-        <button type="button" id="lyrClear">Remove</button>
-        <p id="lyrInfo">No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.</p>
-        <details id="lyrBox"><summary>Paste or open lyrics (.lrc or .vtt)</summary>
-          <textarea id="lyrText" placeholder="[00:12.50] First line of the song&#10;[00:16.80] Second line"></textarea>
-          <div class="listen"><button type="button" id="lyrApply">Use these lyrics</button><label class="btn">Open file…<input type="file" id="lyrFile" accept=".lrc,.vtt,.txt"></label></div>
+      <div class="prog"><i id="barFill"></i></div>
+      <div class="actions">
+        <button class="btn rec sm" id="listen" type="button"><span class="dot"></span><span id="listenLabel">Start listening</span></button>
+        <button class="btn sm" id="stop" type="button" hidden>Stop &amp; build chart</button>
+        <button class="link" id="other" type="button">Listen to another tab instead</button>
+      </div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+    </div>
+    <div class="card tlwrap">
+      <div class="tl" id="tl" role="slider" aria-label="Song position" aria-valuemin="0" tabindex="0"><span class="head" id="head"></span></div>
+      <div class="tlx"><span id="t0">0:00</span><span id="t1">0:00</span></div>
+    </div>
+  </section>
+
+  <section class="card sheet" aria-label="Chord chart">
+    <div class="shead">
+      <div class="title"><h1 id="songTitle">Untitled</h1><div class="facts" id="facts"></div></div>
+      <div class="tools" id="tools">
+        <div class="seg" title="Transpose"><span>Key</span><button type="button" id="down" aria-label="Down a semitone">−</button><output id="tr">0</output><button type="button" id="up" aria-label="Up a semitone">+</button></div>
+        <div class="seg"><span>Capo</span><select id="capo" aria-label="Capo"><option value="none">None</option><option value="auto">Easiest</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></div>
+        <div class="seg"><label><input type="checkbox" id="simplify"> Simple chords</label></div>
+        <details class="menu" id="export"><summary class="btn sm">Export ▾</summary>
+          <div class="list">
+            <button type="button" data-x="copy">Copy as text</button>
+            <button type="button" data-x="text">Download text (.txt)</button>
+            <button type="button" data-x="chordpro">Download ChordPro (.cho)</button>
+            <button type="button" data-x="markdown">Download Markdown (.md)</button>
+            <button type="button" data-x="json">Download JSON</button>
+          </div>
         </details>
       </div>
-      <p class="note" id="capoNote"></p>
-      <div id="sheet"></div>
-    </section>
-  </main>
-</div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+</main>
 
 <script id="lib">/*__LIBRARY__*/</script>
 <script>
 {
-  const { renderSheet, parseLyrics, parseLrc, suggestCapo, formatTime, theory, makeDemoSong, wavBlob } = YTChords;
+  const { renderSheet, suggestCapo, formatTime, theory } = YTChords;
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -192,7 +247,7 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
       const m = e.data;
       try {
         if (m.type === 'start') {
-          live = YTChords.createLiveTracker({ sampleRate: m.sampleRate, vocabulary: m.vocabulary });
+          live = YTChords.createLiveTracker({ sampleRate: m.sampleRate });
           chunks = []; total = 0; clearInterval(timer);
           timer = setInterval(() => { const r = live && live.update(); if (r) post(Object.assign({ type: 'live' }, r)); }, 250);
         } else if (m.type === 'chunk') {
@@ -203,39 +258,43 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
           const x = new Float32Array(m.type === 'finish' ? total : 0);
           let o = 0; for (const c of chunks) { if (o + c.length <= x.length) x.set(c, o); o += c.length; }
           chunks = []; total = 0;
-          if (m.type === 'finish') run(x, m.sampleRate, m.options);
-        } else if (m.type === 'analyze') run(m.samples, m.sampleRate, m.options);
+          if (m.type === 'finish') run(x, m.sampleRate, {});
+        }
       } catch (err) { post({ type: 'error', message: err.message }); }
     };`;
   let engine;
   try {
-    const url = URL.createObjectURL(new Blob([$('lib').textContent, '\n', WORKER], { type: 'text/javascript' }));
-    const w = new Worker(url);
+    const w = new Worker(URL.createObjectURL(new Blob([$('lib').textContent, '\n', WORKER], { type: 'text/javascript' })));
     engine = { send: (m, t) => w.postMessage(m, t || []), set onmessage(fn) { w.onmessage = fn; } };
   } catch {
-    // No workers (very old browser or locked-down page): run the same code on the main thread.
+    // No workers: run the same code on the main thread.
     const fake = { postMessage: (m) => setTimeout(() => fake.handler?.({ data: m })) };
     new Function('self', 'YTChords', WORKER)(fake, YTChords);
     engine = { send: (m) => setTimeout(() => fake.onmessage({ data: m })), set onmessage(fn) { fake.handler = fn; } };
   }
 
   /* ================= state ================= */
-  const S = { analysis: null, lyricsRaw: null, lyricOffset: 0, meta: {}, source: null, transpose: 0, sheet: '', videoId: null };
-  let job = null; // what the engine is analysing right now
+  const S = { analysis: null, meta: {}, source: null, videoId: null, transpose: 0, savedAt: null };
   let cap = null; // active capture session
+  let building = false;
   let liveSegs = [];
-  let lastLive = null;
   let yt = null, ytApi = null, ytBroken = false;
   let lastSeg = -1;
+  let pieces = []; // [{el, bar, s, e}] chord tiles in the chart
+  let onPiece = null;
+  let perLine = 4;
+  let lastUserScroll = 0;
 
+  const msg = (html, err = false) => { $('msg').innerHTML = html; $('msg').className = err ? 'msg err' : 'msg'; };
+  const setState = (text) => { $('stateText').textContent = text; };
   const STAGES = [['chroma', 'Harmony'], ['beats', 'Beats'], ['chords', 'Chords']];
-  const status = (html, err = false) => { $('status').innerHTML = html; $('status').className = err ? 'err' : ''; };
   const steps = (stage) => {
     const at = STAGES.findIndex(([k]) => k === stage);
-    return `Building the sheet <span class="steps">${STAGES.map(([, l], i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${i < at ? '✓ ' : ''}${l}</span>`).join('')}</span>`;
+    return `<span class="steps">${STAGES.map(([, l], i) => `<span class="${i === at ? 'on' : ''}">${i < at ? '✓ ' : ''}${l}</span>`).join('')}</span>`;
   };
+  const showView = (v) => { $('welcome').hidden = v !== 'welcome'; $('work').hidden = v !== 'work'; };
 
-  /* ================= chord naming (mirrors renderSheet so the stand and sheet agree) ================= */
+  /* ================= chord naming (mirrors renderSheet so the chart and exports agree) ================= */
   function view() {
     const a = S.analysis;
     const simplify = $('simplify').checked;
@@ -255,98 +314,103 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     const minor = ['min', 'min7', 'dim'].includes(ch.quality);
     return [`oklch(${minor ? 0.6 : 0.8} 0.14 ${(ch.root * 30 + 25) % 360})`, minor ? '#fff' : '#111'];
   };
-  const lyrics = () => (S.lyricsRaw ? S.lyricsRaw.map((l) => ({ ...l, start: l.start + S.lyricOffset, end: l.end + S.lyricOffset, words: l.words.map((w) => ({ ...w, start: w.start + S.lyricOffset })) })) : null);
 
+  /* ================= chart ================= */
+  function chartHtml(bars, v, n) {
+    const rows = [];
+    for (let i = 0; i < bars.length; i += n) {
+      const cells = bars.slice(i, i + n).map((bar, k) => {
+        const beat = (bar.end - bar.start) / Math.max(1, bar.beats.length);
+        const parts = [];
+        bar.beats.forEach((ch, j) => {
+          const label = v.name(ch);
+          const last = parts[parts.length - 1];
+          if (last && last.label === label) { last.beats++; last.e = bar.start + (j + 1) * beat; }
+          else parts.push({ label, ch, beats: 1, s: bar.start + j * beat, e: bar.start + (j + 1) * beat });
+        });
+        const inner = parts.map((p) => {
+          const [c, cf] = colour(v.shape(p.ch));
+          const nc = p.ch.quality === 'N';
+          return `<span class="c${nc ? ' nc' : ''}" style="flex:${p.beats};--c:${c};--cf:${cf}" data-s="${p.s.toFixed(2)}" data-e="${p.e.toFixed(2)}" title="${esc(p.label)} at ${formatTime(p.s)}">${esc(nc ? '–' : p.label)}</span>`;
+        }).join('');
+        return `<div class="bar${bar.pickup ? ' pickup' : ''}" data-i="${i + k}">${inner}</div>`;
+      }).join('');
+      rows.push(`<div class="line"><time>${formatTime(bars[i].start)}</time><div class="bars" style="--n:${n}">${cells}</div></div>`);
+    }
+    return rows.join('');
+  }
+  function drawChart() {
+    const a = S.analysis;
+    const chart = $('chart');
+    pieces = [];
+    onPiece = null;
+    if (!a) {
+      const listening = !!cap;
+      chart.innerHTML = `<div class="empty"><div>
+        <div class="big">${building ? 'Building your chart…' : listening ? 'Listening…' : 'Your chart appears here'}</div>
+        <div>${building ? 'This takes a few seconds.' : listening ? 'The full chart is built when the video ends, or when you press Stop.' : 'Press <b>Start listening</b> and share this tab with tab audio on.'}</div>
+        <div class="skel">${'<i></i>'.repeat(8)}</div></div></div>`;
+      return;
+    }
+    const v = view();
+    const note = v.capo > 0
+      ? `<p class="note">Capo ${v.capo}: chords are shown as the shapes you play.</p>`
+      : v.suggested > 0 ? `<p class="note">Tip: capo ${v.suggested} gives easier open shapes. Choose “Easiest”.</p>` : '';
+    chart.innerHTML = note + chartHtml(a.bars, v, perLine);
+    pieces = [...chart.querySelectorAll('.c')].map((el) => ({ el, bar: el.parentElement, s: +el.dataset.s, e: +el.dataset.e }));
+  }
+
+  /* ================= render ================= */
+  function render() {
+    const a = S.analysis;
+    $('tr').textContent = (S.transpose > 0 ? '+' : '') + S.transpose;
+    $('songTitle').textContent = S.meta.title || 'Untitled';
+    $('tools').style.visibility = a ? 'visible' : 'hidden';
+    if (!a) {
+      $('facts').innerHTML = S.meta.artist ? esc(S.meta.artist) : '';
+      drawChart();
+      return;
+    }
+    const v = view();
+    const key = theory.keyName(theory.transposeKey(a.key, S.transpose));
+    const facts = [['Key', key], ['Tempo', a.tempo ? `${Math.round(a.tempo)} BPM` : 'free'], ['Time', `${a.beatsPerBar}/4`]];
+    const hz = 440 * Math.pow(2, a.tuningCents / 1200);
+    if (Math.abs(hz - 440) >= 1.5) facts.push(['Tuning', `A=${hz.toFixed(0)} Hz`]);
+    $('facts').innerHTML = (S.meta.artist ? `<span>${esc(S.meta.artist)}</span>` : '') + facts.map(([k, x]) => `<span>${k} <b>${esc(x)}</b></span>`).join('');
+    drawChart();
+    drawTimeline(a.segments, Math.max(a.duration, ...a.segments.map((s) => s.end)), v.name, v.shape);
+    lastSeg = -1;
+    tick(true);
+  }
   function drawTimeline(segs, dur, name, shape) {
     $('tl').innerHTML = segs.map((s) => {
       const [bg, fg] = colour(shape(s.chord));
-      const left = (s.start / dur) * 100;
       const w = (Math.max(0, s.end - s.start) / dur) * 100;
-      return `<div style="left:${left}%;width:${w}%;background:${bg};color:${fg}" title="${esc(name(s.chord))} at ${formatTime(s.start)}">${w > 2.6 ? esc(name(s.chord)) : ''}</div>`;
+      return `<div style="left:${(s.start / dur) * 100}%;width:${w}%;background:${bg};color:${fg}" title="${esc(name(s.chord))} at ${formatTime(s.start)}">${w > 3 ? esc(name(s.chord)) : ''}</div>`;
     }).join('') + '<span class="head" id="head"></span>';
     $('t1').textContent = formatTime(dur);
     $('tl').setAttribute('aria-valuemax', Math.round(dur));
   }
-
-  /* ================= render ================= */
-  let marks = []; // [{el, s, e, ly}] timed spans in the sheet
-  let onMarks = []; // currently highlighted
-  let lastUserScroll = 0;
-  function showPlain(text) {
-    const pre = document.createElement('pre');
-    pre.textContent = text;
-    $('sheet').replaceChildren(pre);
-    marks = [];
-    onMarks = [];
-  }
-  function render() {
-    const a = S.analysis;
-    $('tr').textContent = (S.transpose > 0 ? '+' : '') + S.transpose;
-    $('lyrOff').textContent = `${S.lyricOffset > 0 ? '+' : ''}${S.lyricOffset.toFixed(1)}s`;
-    const title = S.meta.title || (S.source ? 'Untitled' : '');
-    const by = S.meta.artist ? `<div class="by">${esc(S.meta.artist)}</div>` : '';
-    if (!a) {
-      $('facts').innerHTML = title ? `<h2>${esc(title)}</h2>${by}` : '';
-      $('chips').innerHTML = '';
-      $('capoNote').textContent = '';
-      showPlain(S.source === 'external'
-        ? 'Listening to another tab.\nPlay the song there, then press “Stop & build sheet”.'
-        : S.source === 'youtube'
-        ? '1. Press “Listen & get chords”.\n2. In the share dialog choose This tab and keep\n   “Also share tab audio” switched on.\n3. The video restarts and plays. Chords appear live,\n   and the full sheet is built here when the video\n   ends or you press Stop.\n\nAfter that, the chords light up here as you play.'
-        : 'Load a YouTube video, play the demo song, or open an audio file.');
-      S.sheet = '';
-      return;
-    }
-    const v = view();
-    const opts = {
-      format: $('format').value, lyrics: lyrics(), title: title || 'Untitled', artist: S.meta.artist, source: S.meta.url,
-      transpose: S.transpose, capo: $('capo').value === 'none' ? 'none' : $('capo').value === 'auto' ? 'auto' : +$('capo').value,
-      simplify: $('simplify').checked,
-    };
-    S.sheet = renderSheet(a, opts);
-    if (opts.format === 'text') {
-      // Same sheet, with every chord and lyric line tagged with its time for play-along highlighting.
-      $('sheet').innerHTML = renderSheet(a, { ...opts, format: 'html' });
-      marks = [...$('sheet').querySelectorAll('.ch, .ly')].map((el) => ({ el, s: +el.dataset.s, e: +el.dataset.e, ly: el.classList.contains('ly') }));
-    } else showPlain(S.sheet);
-    onMarks = [];
-
-    const key = theory.keyName(theory.transposeKey(a.key, S.transpose));
-    const hz = 440 * Math.pow(2, a.tuningCents / 1200);
-    const facts = [['Key', key], ['Tempo', a.tempo ? `${Math.round(a.tempo)} BPM` : 'free'], ['Time', `${a.beatsPerBar}/4`], ['Length', formatTime(a.duration)]];
-    if (Math.abs(hz - 440) >= 1.5) facts.push(['Tuning', `A = ${hz.toFixed(0)} Hz`]);
-    $('facts').innerHTML = `<h2>${esc(title)}</h2>${by}<dl>${facts.map(([k, x]) => `<div><dt>${k}</dt><dd>${esc(x)}</dd></div>`).join('')}</dl>`;
-
-    const seen = new Map();
-    for (const s of a.segments) if (s.chord.quality !== 'N' && !seen.has(v.name(s.chord))) seen.set(v.name(s.chord), v.shape(s.chord));
-    $('chips').innerHTML = [...seen].map(([n, c]) => { const [bg, fg] = colour(c); return `<span style="background:${bg};color:${fg}">${esc(n)}</span>`; }).join('');
-    $('capoNote').textContent = v.capo > 0
-      ? `Capo ${v.capo}: chords are shown as the shapes you play, sounding in ${key}.`
-      : v.suggested > 0 ? `Tip: capo ${v.suggested} turns these into easier open shapes. Pick “Easiest”.` : '';
-    drawTimeline(a.segments, Math.max(a.duration, ...a.segments.map((s) => s.end)), v.name, v.shape);
-    $('tlHint').textContent = S.source === 'external' ? 'Recorded from another tab' : 'Click the strip to jump';
-    lastSeg = -1;
-    tick(true);
-  }
+  // Wider chart panels show 8 bars a line, narrow ones 4 (or 2 on phones).
+  new ResizeObserver(([e]) => {
+    const w = e.contentRect.width;
+    const n = w >= 1000 ? 8 : w >= 420 ? 4 : 2;
+    if (n !== perLine) { perLine = n; if (S.analysis) { drawChart(); tick(true); } }
+  }).observe($('chart'));
 
   /* ================= playback sync ================= */
-  const now = () => {
-    if (S.source === 'youtube') return yt?.getCurrentTime?.() ?? 0;
-    if (S.source === 'audio') return $('audio').currentTime || 0;
-    return cap ? cap.total / cap.sr : 0;
-  };
+  const now = () => (S.source === 'youtube' ? yt?.getCurrentTime?.() ?? 0 : cap ? cap.total / cap.sr : 0);
+  const isPlaying = () => S.source === 'youtube' && yt?.getPlayerState?.() === 1;
   function seek(t) {
-    if (S.source === 'youtube') yt?.seekTo?.(t, true);
-    else if (S.source === 'audio') $('audio').currentTime = t;
+    if (S.source === 'youtube') { yt?.seekTo?.(t, true); yt?.playVideo?.(); }
+    lastUserScroll = 0;
     tick(true);
   }
   function tick(force) {
-    const t = now();
-    const line = lyrics()?.find((l) => t >= l.start - 0.3 && t < l.end);
-    $('lyric').textContent = line ? line.text : '';
-    if (cap) return; // the live view drives the panel while listening
+    if (cap) return; // the live view drives the analyser while listening
     const a = S.analysis;
     if (!a) return;
+    const t = now();
     const segs = a.segments;
     const dur = Math.max(a.duration, ...segs.map((s) => s.end));
     let i = segs.findIndex((s) => t >= s.start && t < s.end);
@@ -355,82 +419,57 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     $('t0').textContent = formatTime(t);
     const cur = segs[i];
     $('barFill').style.width = cur ? `${Math.min(100, ((t - cur.start) / (cur.end - cur.start)) * 100)}%` : '0%';
-    highlight(t, force);
+    highlight(t);
     if (i === lastSeg && !force) return;
+    lastSeg = i;
     $('tl').querySelectorAll('div.on').forEach((d) => d.classList.remove('on'));
     $('tl').children[i]?.classList.add('on');
-    lastSeg = i;
     const v = view();
-    $('nowChord').textContent = cur ? v.name(cur.chord) : '–';
+    $('nowChord').textContent = cur && cur.chord.quality !== 'N' ? v.name(cur.chord) : '–';
     $('nowChord').style.color = cur && cur.chord.quality !== 'N' ? colour(v.shape(cur.chord))[0] : 'var(--mute)';
     const nx = segs.slice(i + 1).find((s) => s.chord.quality !== 'N');
-    $('next').innerHTML = S.source === 'external' ? 'Recorded from another tab, so there’s no playback sync' : nx ? `Next <b>${esc(v.name(nx.chord))}</b> at ${formatTime(nx.start)}` : 'End of song';
+    $('next').innerHTML = S.source === 'external' ? 'Recorded from another tab' : nx ? `Next <b>${esc(v.name(nx.chord))}</b> at ${formatTime(nx.start)}` : 'End of song';
   }
   setInterval(() => tick(false), 80);
 
-  // Light up the chord and lyric line under the playhead, and keep them in view.
-  function highlight(t, force) {
-    let ch = null;
-    let ly = null;
-    for (const m of marks) {
-      if (t + 0.05 < m.s || t >= m.e) continue;
-      if (m.ly) { if (!ly || m.s >= ly.s) ly = m; } else if (!ch || m.s > ch.s) ch = m;
-    }
-    const next = [ch, ly].filter(Boolean);
-    if (!force && next.length === onMarks.length && next.every((m, k) => m === onMarks[k])) return;
-    for (const m of onMarks) m.el.classList.remove('on');
-    for (const m of next) m.el.classList.add('on');
-    onMarks = next;
-    const target = ly || ch;
-    if (!target || !isPlaying() || Date.now() - lastUserScroll < 3000) return;
-    const pre = target.el.closest('pre');
-    if (pre && pre.scrollHeight > pre.clientHeight + 4) {
-      const top = target.el.offsetTop - pre.clientHeight / 3;
-      if (Math.abs(pre.scrollTop - top) > 24) pre.scrollTo({ top, behavior: 'smooth' });
+  function highlight(t) {
+    let p = null;
+    for (const x of pieces) if (t + 0.05 >= x.s && t < x.e && (!p || x.s > p.s)) p = x;
+    if (p === onPiece) return;
+    if (onPiece) { onPiece.el.classList.remove('on'); onPiece.bar.classList.remove('cur'); }
+    onPiece = p;
+    if (!p) return;
+    p.el.classList.add('on');
+    p.bar.classList.add('cur');
+    if (!isPlaying() || Date.now() - lastUserScroll < 3000) return;
+    const chart = $('chart');
+    const line = p.bar.closest('.line');
+    if (chart.scrollHeight > chart.clientHeight + 4) {
+      const r = line.getBoundingClientRect();
+      const c = chart.getBoundingClientRect();
+      if (r.top < c.top + 40 || r.bottom > c.bottom - 40) chart.scrollTop += r.top - c.top - c.height / 3;
     } else {
-      const r = target.el.getBoundingClientRect();
-      if (r.top < 60 || r.bottom > innerHeight - 60) target.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const r = line.getBoundingClientRect();
+      if (r.top < 80 || r.bottom > innerHeight - 40) line.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }
-  const isPlaying = () => (S.source === 'youtube' ? yt?.getPlayerState?.() === 1 : S.source === 'audio' ? !$('audio').paused : false);
-  for (const ev of ['wheel', 'touchmove', 'keydown']) $('sheet').addEventListener(ev, () => (lastUserScroll = Date.now()), { passive: true });
-  $('sheet').addEventListener('click', (e) => {
-    const el = e.target.closest('.ch, .ly');
-    if (!el || !S.analysis || cap) return;
-    lastUserScroll = 0;
-    seek(+el.dataset.s);
-    if (S.source === 'youtube') yt?.playVideo?.();
-    else if (S.source === 'audio') $('audio').play().catch(() => {});
+  for (const ev of ['wheel', 'touchmove']) $('chart').addEventListener(ev, () => (lastUserScroll = Date.now()), { passive: true });
+  $('chart').addEventListener('click', (e) => {
+    const el = e.target.closest('.c');
+    if (el && S.analysis && !cap) seek(+el.dataset.s);
   });
   $('tl').addEventListener('click', (e) => {
     if (!S.analysis || cap) return;
     const r = $('tl').getBoundingClientRect();
     seek(((e.clientX - r.left) / r.width) * Math.max(S.analysis.duration, ...S.analysis.segments.map((s) => s.end)));
   });
-  $('tl').addEventListener('keydown', (e) => {
-    if (!S.analysis || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-    e.preventDefault();
-    seek(Math.max(0, now() + (e.key === 'ArrowRight' ? 5 : -5)));
+  document.addEventListener('keydown', (e) => {
+    if (!S.analysis || cap || S.source !== 'youtube' || e.target.closest('input,select,textarea,button,summary')) return;
+    if (e.key === ' ') { e.preventDefault(); isPlaying() ? yt.pauseVideo() : yt.playVideo(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); seek(Math.max(0, now() + (e.key === 'ArrowRight' ? 5 : -5))); }
   });
 
-  /* ================= sources ================= */
-  function setSource(source, meta) {
-    if (cap) stopListening(true);
-    Object.assign(S, { source, meta: meta || {}, analysis: null, transpose: 0 });
-    $('capo').value = 'none';
-    liveSegs = [];
-    $('tl').innerHTML = '<span class="head" id="head"></span>';
-    $('nowChord').textContent = '–';
-    $('nowChord').style.color = 'var(--mute)';
-    $('next').textContent = source === 'youtube' ? 'Press Listen, then play' : 'Press play';
-    $('barFill').style.width = '0%';
-    $('t0').textContent = $('t1').textContent = '0:00';
-    $('screen').classList.toggle('audio', source !== 'youtube');
-    $('hint').hidden = source !== 'youtube';
-    $('listen').hidden = source === 'audio';
-    render();
-  }
-
+  /* ================= YouTube player ================= */
   const videoId = (s) => (/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/.exec(s) || /^([\w-]{11})$/.exec(s.trim()) || [])[1] || null;
   function loadYouTubeApi() {
     ytApi ??= new Promise((resolve, reject) => {
@@ -443,94 +482,125 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     });
     return ytApi;
   }
-  const YT_ERRORS = { 2: 'that video id is invalid', 5: 'the player hit an HTML5 error', 100: 'the video is private or removed', 101: 'the owner doesn’t allow embedding', 150: 'the owner doesn’t allow embedding', 153: 'YouTube refused to embed it on this page' };
+  const YT_ERRORS = { 2: 'that link isn’t a valid video', 5: 'the player hit an error', 100: 'the video is private or removed', 101: 'the owner doesn’t allow embedding', 150: 'the owner doesn’t allow embedding', 153: 'YouTube refused to embed it on this page' };
   async function showYouTube(id) {
-    $('audio').pause();
-    $('audio').hidden = true;
-    ytBroken = false;
-    setSource('youtube', { url: `https://www.youtube.com/watch?v=${id}` });
-    S.videoId = id;
-    $('art').hidden = true;
-    $('yt').hidden = false;
     try {
       await loadYouTubeApi();
       if (yt?.cueVideoById) yt.cueVideoById(id);
-      else yt = new YT.Player('yt', {
-        videoId: id, playerVars: { playsinline: 1, rel: 0 },
-        events: { onReady: onYtReady, onStateChange: onYtState, onError: onYtError },
-      });
+      else yt = new YT.Player('yt', { videoId: id, playerVars: { playsinline: 1, rel: 0 }, events: { onReady: onYtReady, onStateChange: onYtState, onError: onYtError } });
     } catch (err) {
-      $('art').hidden = false;
-      $('art').textContent = err.message;
       ytBroken = true;
+      msg(esc(err.message), true);
     }
-  }
-  // Finished analyses are kept in this browser, so a video only needs listening to once.
-  const CACHE = 'ytchords:v1:';
-  function saveCached(id, data) {
-    try {
-      const index = JSON.parse(localStorage.getItem(CACHE + 'index') || '[]').filter((x) => x !== id);
-      index.unshift(id);
-      for (const old of index.splice(12)) localStorage.removeItem(CACHE + old);
-      localStorage.setItem(CACHE + id, JSON.stringify(data));
-      localStorage.setItem(CACHE + 'index', JSON.stringify(index));
-    } catch { /* storage full or blocked: not essential */ }
-  }
-  function loadCached(id) {
-    try { return JSON.parse(localStorage.getItem(CACHE + id) || 'null'); } catch { return null; }
-  }
-  function loadVideo(id, { listen }) {
-    S.lyricsRaw = null;
-    S.lyricOffset = 0;
-    $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
-    try { history.replaceState(null, '', '#' + id); } catch {}
-    showYouTube(id);
-    const saved = loadCached(id);
-    if (saved?.analysis) {
-      S.analysis = saved.analysis;
-      Object.assign(S.meta, { title: saved.title || S.meta.title, artist: saved.artist || S.meta.artist });
-      if (saved.lyrics) { S.lyricsRaw = saved.lyrics; S.lyricOffset = saved.lyricOffset || 0; $('lyrInfo').textContent = 'Lyrics saved with this video.'; }
-      lastSeg = -1;
-      render();
-      status(`Loaded the chords you saved for this video on ${new Date(saved.savedAt).toLocaleDateString()}. Press play on the video to follow along, or Listen again to redo them.`);
-      return;
-    }
-    if (listen) startListening({ restart: true });
-    else status('Video loaded. Press “Listen & get chords” and share this tab to work out the chords.');
   }
   function onYtMeta() {
     const d = yt?.getVideoData?.();
     if (!d?.title || S.source !== 'youtube') return;
     S.meta.title = d.title;
     S.meta.artist = d.author;
-    render();
-    if (!S.lyricsRaw) findLyrics(true);
-  }
-  function onYtState(e) {
-    if (e.data === 1 || e.data === 5) onYtMeta();
-    if (e.data === 0 && cap?.mode === 'embed') stopListening();
-    if (e.data === 1 && !cap && !S.analysis && S.source === 'youtube' && !job) {
-      status('The video is playing, but the page isn’t listening yet, so no chords can be worked out. Press “Listen & get chords” and share this tab (with tab audio on).', true);
-      $('listen').classList.remove('nudge');
-      void $('listen').offsetWidth;
-      $('listen').classList.add('nudge');
-    }
+    $('songTitle').textContent = d.title;
+    if (!S.analysis) $('facts').textContent = d.author || '';
+    if (S.analysis && S.videoId) saveCachedNow();
   }
   function onYtReady() {
     onYtMeta();
     if (cap?.mode === 'embed' && cap.restart) restartVideo();
   }
+  function onYtState(e) {
+    if (e.data === 1 || e.data === 5) onYtMeta();
+    if (e.data === 0 && cap?.mode === 'embed') stopListening();
+    if (e.data === 1 && !cap && !S.analysis && !building && S.source === 'youtube') {
+      msg('The video is playing, but nothing is being analysed yet. Press <b>Start listening</b> and share this tab with tab audio on.', true);
+      $('listen').classList.remove('nudge');
+      void $('listen').offsetWidth;
+      $('listen').classList.add('nudge');
+    }
+  }
+  function onYtError(e) {
+    ytBroken = true;
+    const tip = location.protocol === 'file:' ? ' YouTube blocks players on pages opened from disk; host the page anywhere and it works.' : '';
+    msg(`This video can’t play here (${YT_ERRORS[e.data] || 'error ' + e.data}).${tip} Open it on youtube.com and use “Listen to another tab instead”.`, true);
+  }
   function restartVideo() {
-    if (typeof yt?.seekTo !== 'function') return; // player not ready yet; onYtReady will do it
+    if (typeof yt?.seekTo !== 'function') return; // not ready yet; onYtReady will do it
     cap.restart = false;
     yt.seekTo(0, true);
     yt.playVideo();
   }
-  function onYtError(e) {
-    ytBroken = true;
-    const why = YT_ERRORS[e.data] || `error ${e.data}`;
-    const tip = location.protocol === 'file:' ? ' YouTube often blocks players on pages opened straight from disk, so host this file anywhere (even GitHub Pages) and it will work.' : '';
-    status(`This video can’t play here (${why}).${tip} You can still open it on youtube.com and use “Listen to another tab instead”.`, true);
+
+  /* ================= saved charts ================= */
+  const CACHE = 'ytchords:v1:';
+  const cacheIndex = () => { try { return JSON.parse(localStorage.getItem(CACHE + 'index') || '[]'); } catch { return []; } };
+  function saveCached(id, data) {
+    try {
+      const index = cacheIndex().filter((x) => x !== id);
+      index.unshift(id);
+      for (const old of index.splice(12)) localStorage.removeItem(CACHE + old);
+      localStorage.setItem(CACHE + id, JSON.stringify(data));
+      localStorage.setItem(CACHE + 'index', JSON.stringify(index));
+    } catch { /* storage full or blocked: not essential */ }
+  }
+  const loadCached = (id) => { try { return JSON.parse(localStorage.getItem(CACHE + id) || 'null'); } catch { return null; } };
+  function saveCachedNow() {
+    if (S.source !== 'youtube' || !S.videoId || !S.analysis) return;
+    saveCached(S.videoId, { analysis: S.analysis, title: S.meta.title, artist: S.meta.artist, savedAt: S.savedAt || Date.now() });
+  }
+  function drawRecent() {
+    const items = cacheIndex().map((id) => [id, loadCached(id)]).filter(([, d]) => d?.analysis).slice(0, 8);
+    $('recent').hidden = !items.length;
+    $('rgrid').innerHTML = items.map(([id, d]) => `<button class="rcard" type="button" data-id="${esc(id)}">
+      <img src="https://i.ytimg.com/vi/${esc(id)}/mqdefault.jpg" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <span>${esc(d.title || id)}<small>${esc(d.analysis.key?.name || '')}${d.analysis.tempo ? ' · ' + Math.round(d.analysis.tempo) + ' BPM' : ''}</small></span></button>`).join('');
+  }
+  $('rgrid').addEventListener('click', (e) => {
+    const b = e.target.closest('.rcard');
+    if (b) { $('url').value = `https://www.youtube.com/watch?v=${b.dataset.id}`; loadVideo(b.dataset.id, { listen: false }); }
+  });
+
+  /* ================= loading a video ================= */
+  function resetAnalyser() {
+    $('nowChord').textContent = '–';
+    $('nowChord').style.color = 'var(--mute)';
+    $('barFill').style.width = '0%';
+    $('tl').innerHTML = '<span class="head" id="head"></span>';
+    $('t0').textContent = $('t1').textContent = '0:00';
+    liveSegs = [];
+  }
+  // fresh: ignore any saved chart and analyse again (the Analyse button always does this).
+  function loadVideo(id, { listen, fresh = false }) {
+    if (cap) stopListening(true);
+    building = false; // a chart still being built for the previous session is dropped
+    msg('');
+    Object.assign(S, { analysis: null, meta: { url: `https://www.youtube.com/watch?v=${id}` }, source: 'youtube', videoId: id, transpose: 0, savedAt: null });
+    $('capo').value = 'none';
+    $('simplify').checked = false;
+    ytBroken = false;
+    resetAnalyser();
+    showView('work');
+    try { history.replaceState(null, '', '#' + id); } catch {}
+    showYouTube(id);
+    const saved = fresh ? null : loadCached(id);
+    if (saved?.analysis) {
+      Object.assign(S, { analysis: saved.analysis, savedAt: saved.savedAt });
+      Object.assign(S.meta, { title: saved.title, artist: saved.artist });
+      setIdleUi(true);
+      msg(`Saved chart from ${new Date(saved.savedAt).toLocaleDateString()}. Press play to follow along.`);
+      render();
+      return;
+    }
+    setIdleUi(false);
+    render();
+    if (listen) startListening({ restart: true });
+    else msg('Press <b>Start listening</b>, then share this tab with tab audio on.');
+  }
+  function setIdleUi(ready) {
+    document.body.classList.remove('listening');
+    setState(ready ? 'Chart ready' : 'Not listening');
+    $('listenLabel').textContent = ready ? 'Analyse again' : 'Start listening';
+    $('listen').hidden = false;
+    $('stop').hidden = true;
+    $('other').hidden = false;
+    $('next').textContent = ready ? '' : 'The chart appears after one listen';
   }
 
   /* ================= listening (tab-audio capture) ================= */
@@ -540,21 +610,21 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
   const rms = (x) => { let s = 0; for (let i = 0; i < x.length; i += 4) s += x[i] * x[i]; return Math.sqrt(s / (x.length / 4)); };
 
   async function startListening({ otherTab = false, stream = null, restart = true } = {}) {
-    if (cap) return;
+    if (cap || building) return;
     try {
       if (!stream) {
-        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('This browser can’t share tab audio. Use Chrome or Edge on a computer, or open an audio file instead.');
+        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('This browser can’t share tab audio. Use Chrome or Edge on a computer.');
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false },
-          preferCurrentTab: !otherTab && S.source === 'youtube',
+          preferCurrentTab: !otherTab,
           selfBrowserSurface: 'include', systemAudio: 'include', surfaceSwitching: 'exclude',
         });
       }
       const tracks = stream.getAudioTracks();
       if (!tracks.length) {
         stream.getTracks().forEach((t) => t.stop());
-        throw new Error('No audio was shared. Try again and keep “Also share tab audio” switched on (Firefox and Safari can’t share tab audio).');
+        throw new Error('No audio was shared. Try again and keep “Also share tab audio” switched on.');
       }
       stream.getVideoTracks().forEach((t) => t.stop());
       const ctx = new AudioContext();
@@ -582,29 +652,30 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
       src.connect(node);
       node.connect(mute).connect(ctx.destination);
       const embed = !otherTab && S.source === 'youtube' && !ytBroken;
-      if (!embed && S.source !== 'external') {
-        S.lyricsRaw = null;
-        $('lyrInfo').textContent = 'Recording another tab. Paste lyrics below if you want them on the sheet.';
-        setSource('external', { title: 'Audio from another tab' });
+      if (!embed) {
+        Object.assign(S, { source: 'external', analysis: null, videoId: null, meta: { title: 'Audio from another tab' } });
+        showView('work');
       }
+      S.analysis = null;
       cap = { ctx, stream, sr: ctx.sampleRate, total: 0, runs: [], recording: false, mode: embed ? 'embed' : 'external', idleLoud: 0, restart: embed && restart };
-      liveSegs = [];
-      lastLive = null;
+      resetAnalyser();
       tracks[0].addEventListener('ended', () => stopListening());
-      engine.send({ type: 'start', sampleRate: ctx.sampleRate, vocabulary: $('vocab').value });
+      engine.send({ type: 'start', sampleRate: ctx.sampleRate });
       document.body.classList.add('listening');
-      $('listenLabel').textContent = 'Listening…';
+      setState('Listening');
+      $('listen').hidden = true;
       $('stop').hidden = false;
       $('other').hidden = true;
-      $('next').textContent = embed ? 'Play the video' : 'Play the song in the other tab';
       $('listen').classList.remove('nudge');
-      status(embed ? 'Listening. The video plays from the start, and the full sheet is built when it ends (or press Stop).' : 'Listening to the other tab. Press Stop when the song is over.');
+      $('next').textContent = embed ? 'Starting the video…' : 'Play the song in the other tab';
+      msg(embed ? 'The video plays from the start. The chart is built when it ends, or press Stop.' : 'Press Stop when the song is over.');
+      render();
       if (embed) {
         if (cap.restart) restartVideo();
         else if (yt?.getPlayerState?.() !== 1) yt?.playVideo?.();
       }
     } catch (err) {
-      status(err.name === 'NotAllowedError' ? 'Sharing was cancelled.' : esc(err.message), err.name !== 'NotAllowedError');
+      msg(err.name === 'NotAllowedError' ? 'Sharing was cancelled. Press <b>Start listening</b> to try again.' : esc(err.message), err.name !== 'NotAllowedError');
     }
   }
 
@@ -613,14 +684,14 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     let record = true;
     let vt = null;
     if (cap.mode === 'embed') {
-      const playing = yt?.getPlayerState?.() === 1;
-      if (playing) vt = yt.getCurrentTime();
+      if (yt?.getPlayerState?.() === 1) vt = yt.getCurrentTime();
       else {
         // Loud audio while our player is idle means the person shared another tab.
         if (!cap.runs.length && rms(x) > 0.01 && (cap.idleLoud += x.length / cap.sr) > 3) {
           cap.mode = 'external';
-          setSourceKeepCapture();
-          status('Hearing audio from another tab, so recording that instead (no video sync).');
+          Object.assign(S, { source: 'external', videoId: null, meta: { title: 'Audio from another tab' } });
+          render();
+          msg('Hearing audio from another tab, so recording that instead. Press Stop when it’s over.');
         }
         record = cap.mode === 'external';
       }
@@ -630,30 +701,23 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     if (record) cap.total += x.length;
     engine.send({ type: 'chunk', data: x, record }, [x.buffer]);
   }
-  function setSourceKeepCapture() {
-    S.source = 'external';
-    S.meta = { title: 'Audio from another tab' };
-    render();
-  }
 
   function onLive(r) {
     if (!cap) return;
     const t = cap.mode === 'embed' ? (yt?.getCurrentTime?.() ?? 0) : cap.total / cap.sr;
-    const sec = cap.total / cap.sr;
     $('t0').textContent = formatTime(t);
-    $('next').textContent = cap.recording ? `Recording · ${formatTime(sec)} so far${r.key ? ` · sounds like ${r.key.name}` : ''}` : (cap.total ? 'Paused, so press play to carry on' : 'Waiting for the video to play…');
+    setState(cap.recording ? `Listening · ${formatTime(cap.total / cap.sr)}` : 'Paused');
+    $('next').textContent = cap.recording ? (r.key ? `Sounds like ${r.key.name}` : '') : 'Press play to carry on';
     if (!cap.recording) return;
-    const shape = (c) => c;
     const flats = r.key ? theory.keyPrefersFlats(r.key) : false;
-    const name = (c) => theory.chordName(c, flats);
-    $('nowChord').textContent = r.silent ? '–' : r.name;
+    $('nowChord').textContent = r.silent || r.chord.quality === 'N' ? '–' : r.name;
     $('nowChord').style.color = r.silent || r.chord.quality === 'N' ? 'var(--mute)' : colour(r.chord)[0];
     $('barFill').style.width = `${Math.round(r.confidence * 100)}%`;
     const last = liveSegs[liveSegs.length - 1];
     if (last && last.name === r.name && Math.abs(t - last.end) < 2) last.end = t;
     else liveSegs.push({ start: last && Math.abs(t - last.end) < 2 ? last.end : t, end: t, chord: r.chord, name: r.name });
     const dur = Math.max(t + 1, cap.mode === 'embed' ? yt?.getDuration?.() || 0 : 0);
-    drawTimeline(liveSegs, dur, name, shape);
+    drawTimeline(liveSegs, dur, (c) => theory.chordName(c, flats), (c) => c);
     $('head').style.left = `${(t / dur) * 100}%`;
   }
 
@@ -664,20 +728,22 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
     try { c.ctx.close(); } catch {}
     c.stream.getTracks().forEach((t) => t.stop());
     document.body.classList.remove('listening');
-    $('listenLabel').textContent = 'Listen & get chords';
-    $('stop').hidden = true;
-    $('other').hidden = false;
-    if (cancel) return engine.send({ type: 'cancel' });
+    if (cancel) { engine.send({ type: 'cancel' }); return; }
     const secs = c.total / c.sr;
     if (secs < 8) {
       engine.send({ type: 'cancel' });
-      status(`Only ${secs.toFixed(0)} s of audio was recorded. Listen for at least 10 seconds, and make sure the video is playing.`, true);
+      setIdleUi(false);
+      render();
+      msg(`Only ${secs.toFixed(0)} s was recorded. Let it listen for at least 10 seconds while the video plays.`, true);
       return;
     }
     if (c.mode === 'embed') yt?.pauseVideo?.();
-    job = { kind: 'capture', runs: c.runs, sr: c.sr };
-    status(steps('chroma'));
-    engine.send({ type: 'finish', sampleRate: c.sr, options: { vocabulary: $('vocab').value } });
+    building = { runs: c.runs, sr: c.sr };
+    setState('Building chart');
+    $('stop').hidden = true;
+    msg(steps('chroma'));
+    render();
+    engine.send({ type: 'finish', sampleRate: c.sr });
   }
 
   // Map times on the recording's clock back onto the video's clock (handles pauses).
@@ -697,178 +763,114 @@ button.rec.nudge{animation:nudge 1s ease-in-out 4}
   engine.onmessage = (e) => {
     const m = e.data;
     if (m.type === 'live') return onLive(m);
-    if (m.type === 'progress') return STAGES.some(([k]) => k === m.stage) && status(steps(m.stage));
-    if (m.type === 'error') { job = null; busy(false); return status('Analysis failed: ' + esc(m.message), true); }
-    if (m.type !== 'result' || !job) return;
-    const j = job;
-    job = null;
-    busy(false);
-    S.analysis = j.kind === 'capture' ? remap(m.analysis, j.runs, j.sr) : m.analysis;
-    lastSeg = -1;
+    if (m.type === 'progress') return STAGES.some(([k]) => k === m.stage) && msg(steps(m.stage));
+    if (m.type === 'error') { building = false; setIdleUi(false); render(); return msg('Analysis failed: ' + esc(m.message), true); }
+    if (m.type !== 'result' || !building) return;
+    const b = building;
+    building = false;
+    S.analysis = remap(m.analysis, b.runs, b.sr);
+    S.savedAt = Date.now();
+    setIdleUi(true);
     render();
-    if (j.kind === 'capture' && S.source === 'youtube' && S.videoId) saveCachedNow();
-    const a = S.analysis;
-    status(`Done: ${a.segments.filter((s) => s.chord.quality !== 'N').length} chord changes in ${a.key.name}${a.tempo ? ` at ${Math.round(a.tempo)} BPM` : ''}.${S.lyricsRaw ? '' : ' Add lyrics below to see chords over the words.'}`);
-    if (!S.lyricsRaw && S.meta.title && S.source !== 'external') findLyrics(true);
+    saveCachedNow();
+    const n = S.analysis.segments.filter((s) => s.chord.quality !== 'N').length;
+    msg(S.source === 'youtube' ? `Done: ${n} chord changes. Saved, so this video opens instantly next time. Press play to follow along.` : `Done: ${n} chord changes.`);
   };
 
-  function saveCachedNow() {
-    if (S.source !== 'youtube' || !S.videoId || !S.analysis) return;
-    saveCached(S.videoId, { analysis: S.analysis, title: S.meta.title, artist: S.meta.artist, lyrics: S.lyricsRaw, lyricOffset: S.lyricOffset, savedAt: Date.now() });
-  }
-
-  /* ================= other inputs ================= */
-  const busy = (b) => { for (const id of ['demo', 'listen']) $(id).disabled = b; };
-
+  /* ================= controls ================= */
   $('urlForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const id = videoId($('url').value);
-    if (!id) return status('That doesn’t look like a YouTube video link. Try youtube.com/watch?v=… or youtu.be/…', true);
-    // The share dialog has to open from this click, so listening starts here too.
-    loadVideo(id, { listen: true });
+    if (!id) { showView('work'); return msg('That doesn’t look like a YouTube video link. Try youtube.com/watch?v=… or youtu.be/…', true); }
+    // Every Analyse click is a new session: clear everything and listen from the start.
+    // (The share dialog must open from this click.)
+    loadVideo(id, { listen: true, fresh: true });
   });
   $('listen').addEventListener('click', () => startListening({ restart: true }));
   $('other').addEventListener('click', () => startListening({ otherTab: true }));
   $('stop').addEventListener('click', () => stopListening());
-
-  function analyseSamples(samples, sampleRate, meta) {
-    busy(true);
-    job = { kind: 'file' };
-    status(steps('chroma'));
-    engine.send({ type: 'analyze', samples, sampleRate, options: { vocabulary: $('vocab').value } }, [samples.buffer]);
-  }
-  function useAudio(blob, label, meta) {
-    yt?.pauseVideo?.();
-    document.querySelector('#screen iframe')?.setAttribute('hidden', '');
-    setSource('audio', meta);
-    $('art').hidden = false;
-    $('art').textContent = label;
-    const audio = $('audio');
-    if (audio.src) URL.revokeObjectURL(audio.src);
-    audio.src = URL.createObjectURL(blob);
-    audio.hidden = false;
-  }
-  function playDemo() {
-    const song = makeDemoSong();
-    S.lyricsRaw = parseLyrics(song.vtt);
-    S.lyricOffset = 0;
-    $('lyrInfo').textContent = 'Demo lyrics (word-timed captions).';
-    useAudio(wavBlob(song.samples, song.sampleRate), 'Demo song: press play below', { title: song.title, artist: song.artist });
-    analyseSamples(song.samples, song.sampleRate);
-  }
-  $('demo').addEventListener('click', playDemo);
-
-  $('file').addEventListener('change', async () => {
-    const file = $('file').files[0];
-    if (!file) return;
-    status(`Decoding ${esc(file.name)}…`);
-    try {
-      const ctx = new AudioContext();
-      const buf = await ctx.decodeAudioData(await file.arrayBuffer());
-      ctx.close();
-      const mono = new Float32Array(buf.length);
-      for (let c = 0; c < buf.numberOfChannels; c++) {
-        const d = buf.getChannelData(c);
-        for (let i = 0; i < d.length; i++) mono[i] += d[i] / buf.numberOfChannels;
-      }
-      S.lyricsRaw = null;
-      $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
-      useAudio(file, file.name, { title: file.name.replace(/\.[^.]+$/, '') });
-      analyseSamples(mono, buf.sampleRate);
-    } catch (err) {
-      status('Couldn’t read that file: ' + esc(err.message), true);
-    } finally {
-      $('file').value = '';
-    }
-  });
-
-  /* ================= lyrics ================= */
-  const cleanTitle = (title = '', author = '') => {
-    let t = title
-      .replace(/\s*[([][^)\]]*(official|video|audio|lyric|visuali[sz]er|hd|4k|remaster|live|mv)[^)\]]*[)\]]/gi, '')
-      .replace(/\s*\|.*$/, '').replace(/\s+(ft\.?|feat\.?)\s.*$/i, '').trim();
-    if (!/ [-–] /.test(t) && author) t = `${author.replace(/\s*-\s*Topic$|VEVO$/i, '')} ${t}`;
-    return t.replace(/ [-–] /, ' ');
-  };
-  async function findLyrics(auto = false) {
-    const q = cleanTitle(S.meta.title, S.meta.artist);
-    if (!q || S.source === 'external') {
-      if (!auto) $('lyrInfo').textContent = 'Load a video first, or paste lyrics below.';
-      return;
-    }
-    $('lyrInfo').textContent = `Searching lrclib.net for “${q}”…`;
-    try {
-      const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const list = (await r.json()).filter((x) => x.syncedLyrics);
-      if (!list.length) {
-        $('lyrInfo').textContent = `No synced lyrics found for “${q}”. Paste or open an .lrc file below.`;
-        return;
-      }
-      const dur = S.analysis?.duration || yt?.getDuration?.() || 0;
-      if (dur) list.sort((a, b) => Math.abs(a.duration - dur) - Math.abs(b.duration - dur));
-      const hit = list[0];
-      S.lyricsRaw = parseLrc(hit.syncedLyrics);
-      S.lyricOffset = 0;
-      $('lyrInfo').textContent = `Using ${hit.artistName} – ${hit.trackName} from lrclib.net. If the words run early or late against the video, nudge the timing.`;
-      render();
-      saveCachedNow();
-    } catch (err) {
-      $('lyrInfo').textContent = `Couldn’t reach lrclib.net (${err.message}). You can paste or open lyrics below instead.`;
-    }
-  }
-  $('findLyr').addEventListener('click', () => findLyrics(false));
-  const nudge = (d) => { S.lyricOffset = Math.round((S.lyricOffset + d) * 10) / 10; render(); saveCachedNow(); };
-  $('lyrEarly').addEventListener('click', () => nudge(-0.5));
-  $('lyrLate').addEventListener('click', () => nudge(0.5));
-  $('lyrClear').addEventListener('click', () => { S.lyricsRaw = null; $('lyrInfo').textContent = 'Lyrics removed.'; render(); saveCachedNow(); });
-  function useLyricText(text, name = '') {
-    const parsed = parseLyrics(text, name);
-    if (!parsed.length) return ($('lyrInfo').textContent = 'No timed lines found. LRC lines look like [00:12.50] words; VTT has 00:00:12.500 --> … cues.');
-    S.lyricsRaw = parsed;
-    S.lyricOffset = 0;
-    $('lyrInfo').textContent = `Using ${parsed.length} timed lines${name ? ` from ${name}` : ''}.`;
-    $('lyrBox').open = false;
-    render();
-    saveCachedNow();
-  }
-  $('lyrApply').addEventListener('click', () => useLyricText($('lyrText').value));
-  $('lyrFile').addEventListener('change', async () => {
-    const f = $('lyrFile').files[0];
-    if (f) useLyricText(await f.text(), f.name);
-    $('lyrFile').value = '';
-  });
-
-  /* ================= sheet tools ================= */
   $('down').addEventListener('click', () => { S.transpose = Math.max(-11, S.transpose - 1); render(); });
   $('up').addEventListener('click', () => { S.transpose = Math.min(11, S.transpose + 1); render(); });
-  for (const id of ['capo', 'simplify', 'format']) $(id).addEventListener('change', render);
-  $('copy').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(S.sheet || $('sheet').textContent); $('copy').textContent = 'Copied'; }
-    catch { $('copy').textContent = 'Select the sheet to copy'; }
-    setTimeout(() => ($('copy').textContent = 'Copy'), 1600);
+  $('capo').addEventListener('change', render);
+  $('simplify').addEventListener('change', render);
+
+  const sheetText = (format) => renderSheet(S.analysis, {
+    format, title: S.meta.title || 'Untitled', artist: S.meta.artist, source: S.meta.url, transpose: S.transpose,
+    capo: $('capo').value === 'none' ? 'none' : $('capo').value === 'auto' ? 'auto' : +$('capo').value, simplify: $('simplify').checked,
   });
-  $('save').addEventListener('click', () => {
-    if (!S.sheet) return;
-    const ext = { text: 'txt', chordpro: 'cho', markdown: 'md', json: 'json' }[$('format').value];
+  $('export').addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-x]');
+    if (!b || !S.analysis) return;
+    $('export').open = false;
+    const x = b.dataset.x;
+    if (x === 'copy') {
+      try { await navigator.clipboard.writeText(sheetText('text')); msg('Copied the chart as text.'); }
+      catch { msg('Your browser blocked copying. Use Download instead.', true); }
+      return;
+    }
+    const ext = { text: 'txt', chordpro: 'cho', markdown: 'md', json: 'json' }[x];
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([S.sheet], { type: 'text/plain' }));
+    a.href = URL.createObjectURL(new Blob([sheetText(x)], { type: 'text/plain' }));
     a.download = `${(S.meta.title || 'chords').replace(/[^\w\- ]+/g, '').trim() || 'chords'}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#export')) $('export').open = false; });
+
+  // Welcome illustration: a small sample chart.
+  $('mock').innerHTML = (() => {
+    const prog = [[7, 'maj'], [2, 'maj'], [4, 'min'], [0, 'maj'], [7, 'maj'], [2, 'maj'], [0, 'maj'], [0, 'maj']];
+    const tile = ([root, quality], on) => {
+      const ch = { root, quality };
+      const [c, cf] = colour(ch);
+      return `<div class="bar${on ? ' cur' : ''}"><span class="c${on ? ' on' : ''}" style="--c:${c};--cf:${cf}">${theory.chordName(ch)}</span></div>`;
+    };
+    return `<div class="bars">${prog.slice(0, 4).map((p, i) => tile(p, i === 2)).join('')}</div><div class="bars">${prog.slice(4).map((p) => tile(p)).join('')}</div>`;
+  })();
 
   if (!navigator.mediaDevices?.getDisplayMedia) {
-    $('hint').innerHTML = 'This browser can’t share tab audio, so Listen won’t work here. Desktop Chrome or Edge can. You can still open an audio file.';
+    msg('This browser can’t share tab audio, so it can’t listen to videos. Desktop Chrome or Edge can.', true);
   }
   window.chordSheetApp = { startListening, stopListening }; // handy for scripting and tests
 
-  // Open mid-use: #VIDEO_ID loads that video; otherwise the demo song.
+  // #VIDEO_ID opens that video (its saved chart, if any). Sharing needs a click, so don't prompt on load.
   const fromHash = location.hash.slice(1);
   if (/^[\w-]{11}$/.test(fromHash)) {
     $('url').value = `https://www.youtube.com/watch?v=${fromHash}`;
-    loadVideo(fromHash, { listen: false }); // sharing needs a click, so don't open the dialog on load
-  } else playDemo();
+    loadVideo(fromHash, { listen: false });
+  } else {
+    showView('welcome');
+    drawRecent();
+  }
+  // Reset: stop listening, stop the video, forget the current song, back to the start screen.
+  function resetSession() {
+    if (cap) stopListening(true);
+    building = false; // a result still on its way is ignored
+    yt?.stopVideo?.();
+    Object.assign(S, { analysis: null, meta: {}, source: null, videoId: null, transpose: 0, savedAt: null });
+    $('url').value = '';
+    $('capo').value = 'none';
+    $('simplify').checked = false;
+    resetAnalyser();
+    setIdleUi(false);
+    msg('');
+    pieces = [];
+    onPiece = null;
+    try { history.replaceState(null, '', location.pathname); } catch {}
+    showView('welcome');
+    drawRecent();
+    $('url').focus();
+  }
+  $('reset').addEventListener('click', resetSession);
+  $('home').addEventListener('click', (e) => { e.preventDefault(); resetSession(); });
+  let clearArmed = 0;
+  $('clearSaved').addEventListener('click', () => {
+    if (Date.now() - clearArmed > 4000) { clearArmed = Date.now(); $('clearSaved').textContent = 'Click again to clear all'; return; }
+    try { for (const id of cacheIndex()) localStorage.removeItem(CACHE + id); localStorage.removeItem(CACHE + 'index'); } catch {}
+    $('clearSaved').textContent = 'Clear saved charts';
+    drawRecent();
+  });
+  setTimeout(function rearm() { if (clearArmed && Date.now() - clearArmed > 4000) { clearArmed = 0; $('clearSaved').textContent = 'Clear saved charts'; } setTimeout(rearm, 1000); }, 1000);
 }
 </script>
 </body>

@@ -1,3 +1,2 @@
-// Browser bundle entry: the analyser + renderer, plus the demo song used by the web page.
+// Browser bundle entry for the web page: the analyser, live tracker and renderer.
 export * from '../src/core.js';
-export { makeDemoSong, wavBlob } from './demo-song.js';

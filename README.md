@@ -98,7 +98,7 @@ const chordpro = renderSheet(analysis, { format: 'chordpro', lyrics, title: meta
 }
 ```
 
-`format: 'html'` returns the text sheet inside `<pre class="chord-sheet">`, with every chord wrapped in `<span class="ch" data-s data-e>` and every lyric line in `<span class="ly" data-s data-e>`, holding start and end times in seconds. That's what the web page uses to highlight chords during playback.
+`format: 'html'` returns the text sheet inside `<pre class="chord-sheet">`, with every chord wrapped in `<span class="ch" data-s data-e>` and every lyric line in `<span class="ly" data-s data-e>`, holding start and end times in seconds, which is handy for building your own play-along view.
 
 Lower-level building blocks are exported too: `downloadYouTube`, `decodeAudioFile`, `analyzeAudio(samples, sampleRate, opts)`, `parseVtt`, `parseLrc`, `suggestCapo` and `theory` (note spelling, transposition, keys).
 
@@ -108,31 +108,32 @@ The analyser is pure JavaScript with no dependencies. It runs in any modern brow
 
 ### The ready-made page: `dist/chord-sheet.html`
 
-This is a single ~77 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
+This is a single ~75 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
 
 - **Live:** every push to `main` runs the tests, builds the page and publishes it to GitHub Pages at `https://nilendrat-ai.github.io/chordsgenerator/` (see `.github/workflows/pages.yml`). This needs **Settings → Pages → Source: GitHub Actions** turned on once.
 - **Download:** each workflow run also attaches the built `dist/` folder as an artifact.
 - **Build it yourself:** run `npm install && npm run build`, then open `dist/chord-sheet.html` or host it anywhere (Netlify, any static folder).
 
-1. Paste a YouTube link and press **Get chords**.
-2. The share dialog opens straight away. Choose **This tab** and keep **Also share tab audio** switched on. The page can only hear the video once it's shared. If you just press play on the video, it warns you instead of silently doing nothing.
-3. The video restarts from 0:00 and plays. The current chord appears live, about half a second behind the music. When the video ends, or you press **Stop**, the whole recording is analysed and the full sheet appears.
-4. Play the video again to play along. The current chord and lyric line light up in the sheet, and it scrolls to follow. Click any chord to jump the video there.
+It's a full-screen app. The top bar holds the link box, **Analyse** and **Reset**. The video and live chord analyser sit on the left, and the chord chart fills the rest of the screen.
 
-Finished sheets are saved in your browser (the last 12 videos), so opening the same video again shows its chords instantly, with no listening needed. `https://…/chordsgenerator/#VIDEO_ID` links straight to one.
+1. Paste a YouTube link and press **Analyse**.
+2. The share dialog opens straight away. Choose **This tab** and keep **Also share tab audio** switched on. The page can only hear the video once it's shared. If you just press play, it warns you instead of silently doing nothing.
+3. The video restarts from 0:00 and plays. The analyser shows the current chord live, about half a second behind the music. When the video ends, or you press **Stop & build chart**, the whole recording is analysed.
+4. The chart appears as a grid of bars, one coloured tile per chord. Play the video and the current chord lights up, and the chart scrolls to follow. Click any tile to jump there. Space plays and pauses, and ← and → skip 5 seconds.
 
 Also on the page:
 
-- **Listen to another tab instead:** captures any tab (YouTube, Spotify web, SoundCloud…), with no embedding needed.
-- **Open an audio file**, or play the **demo song**.
-- **Synced lyrics:** looked up automatically on [lrclib.net](https://lrclib.net) from the video title, or you can paste or open an `.lrc` or `.vtt` file. A timing nudge corrects offsets between the music video and the lyrics.
-- **Sheet controls:** transpose, capo (or "Easiest"), simplify, and Text, ChordPro, Markdown or JSON, with Copy and Download.
+- **Key (transpose), Capo** (or "Easiest") and **Simple chords**, all applied instantly.
+- **Export:** copy as text, or download text, ChordPro, Markdown or JSON.
+- **Saved charts:** finished charts are kept in your browser (the last 12 videos) and listed under **Recent** on the start screen, opening instantly with no listening. `https://…/chordsgenerator/#VIDEO_ID` links straight to one. **Clear saved charts** removes them.
+- **Reset:** stops listening and the video, clears the current song, and returns to the start screen.
+- **Listen to another tab instead:** captures any tab (YouTube, Spotify web, SoundCloud…), for videos that block embedding.
 
 Why does it listen instead of downloading? Browsers aren't allowed to fetch YouTube's audio directly (cross-origin rules), and there's no public CORS-friendly API for it. Tab-audio capture is the only way to get the sound with no server, and it's the same permission video-call apps use.
 
 Requirements and limits:
 
-- **Browsers:** tab-audio sharing works in **desktop Chrome and Edge**. Firefox and Safari can't share tab audio, but they can still analyse audio files.
+- **Browsers:** tab-audio sharing works in **desktop Chrome and Edge**. Firefox and Safari can't share tab audio, so the page can't listen there (the library still analyses audio files in any browser).
 - **Real-time playback:** the analysis needs the song to play through in real time. A 4-minute song takes 4 minutes to capture, and you can pause.
 - **Embedding:** some videos block it (error 101/150). Use **Listen to another tab instead**. YouTube can also refuse embeds on pages opened straight from disk (`file://`, error 153). Hosting the file anywhere fixes this, and "another tab" always works.
 
@@ -185,4 +186,4 @@ The tests synthesise songs with known chords (strummed chords, bass, drums, a wa
 npm test
 ```
 
-There are 19 tests covering chord, key, tempo and tuning accuracy on synthetic audio; the live tracker; caption, LRC and VTT parsing; every output format; transpose and capo; the browser `AudioBuffer` path; and the full YouTube flow through the CLI, using a yt-dlp test double.
+There are 20 tests covering chord, key, tempo and tuning accuracy on synthetic audio; the live tracker; caption, LRC and VTT parsing; every output format (including the timed HTML sheet); transpose and capo; the browser `AudioBuffer` path; and the full YouTube flow through the CLI, using a yt-dlp test double.
