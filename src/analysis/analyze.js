@@ -6,7 +6,7 @@ import { resample } from '../dsp/resample.js';
 import { computeChroma } from '../dsp/chroma.js';
 import { onsetEnvelope, estimateTempo, trackBeats } from '../dsp/beats.js';
 import { percentile, median } from '../dsp/stats.js';
-import { buildStates, scoreSteps, viterbi } from './chords.js';
+import { buildStates, scoreSteps, viterbi, bestFit } from './chords.js';
 import { keyCorrelations, refineKey, estimateKey } from './key.js';
 import { suggestCapo } from './capo.js';
 import { chordId, chordName, chordPcs, isNoChord, keyName, keyPrefersFlats, NO_CHORD } from '../music/theory.js';
@@ -25,6 +25,10 @@ export const DEFAULT_ANALYSIS_OPTIONS = {
   keyBonus: 0.03,
   slashChords: false,
   tuning: 'auto', // 'auto' or cents offset from A440
+  contrast: 0.6, // lift notes above the background level before matching chords (helps dense live mixes)
+  detectNonMusic: true, // mark talking, applause and crowd noise as "no chord"
+  musicFloor: 0.7, // chord fit below this (averaged over ~8 s) can count as non-music...
+  nonMusicGap: 0.07, // ...when it is also this far below the best-fitting part of the recording
   onProgress: null,
 };
 
@@ -39,6 +43,45 @@ function weightedAverage(frames, idxFrom, idxTo, center, halfSpan) {
   }
   if (wsum) for (let k = 0; k < 12; k++) out[k] /= wsum;
   return out;
+}
+
+/**
+ * Find stretches with no music in them: talking, applause, crowd noise. There the
+ * notes don't line up into any chord, so even the best chord fits poorly. The fit
+ * is averaged over about 8 seconds and compared with the best-fitting part of the
+ * same recording, so a dense but genuine song is not mistaken for talk.
+ */
+function findNonMusic(bt, silent, beats, states, o) {
+  const M = bt.length;
+  const fit = bt.map((c, j) => (silent[j] ? 0 : bestFit(c, states)));
+  const span = o.nonMusicWindow ?? 4;
+  const smooth = new Float64Array(M);
+  let a = 0, b = 0, sum = 0, cnt = 0;
+  for (let j = 0; j < M; j++) {
+    while (b < M && beats[b] <= beats[j] + span) { if (!silent[b]) { sum += fit[b]; cnt++; } b++; }
+    while (beats[a] < beats[j] - span) { if (!silent[a]) { sum -= fit[a]; cnt--; } a++; }
+    smooth[j] = cnt ? sum / cnt : 0;
+  }
+  const voiced = [...smooth].filter((_, j) => !silent[j]).sort((x, y) => x - y);
+  // The best-fitting stretch of the recording sets the bar (talk can fill most of a clip).
+  const top = voiced.length ? voiced[Math.floor(0.95 * (voiced.length - 1))] : 0;
+  const threshold = Math.min(o.musicFloor, top - o.nonMusicGap);
+  const flags = Array.from(smooth, (v, j) => !silent[j] && v < threshold);
+  // Ignore short dips and short bursts (under ~6 s): a held note or a drum fill isn't a break.
+  const minRun = o.nonMusicMinSeconds ?? 6;
+  for (const want of [true, false]) {
+    let j = 0;
+    while (j < M) {
+      if (flags[j] !== want) { j++; continue; }
+      let k = j;
+      while (k < M && flags[k] === want) k++;
+      const len = (beats[k - 1] ?? beats[j]) - beats[j];
+      const inner = j > 0 && k < M;
+      if (len < minRun && (want || inner)) for (let i = j; i < k; i++) flags[i] = !want;
+      j = k;
+    }
+  }
+  return { flags, smooth, threshold, top };
 }
 
 /**
@@ -114,14 +157,20 @@ export function analyzeAudio(samples, sampleRate, options = {}) {
     silent[j] = e / (i1 - i0 + 1) <= silenceLevel;
   }
   const durations = beats.map((_, j) => bounds[j + 1] - bounds[j]);
+  const states = buildStates(o.vocabulary);
+
+  if (o.detectNonMusic) {
+    const nm = findNonMusic(bt, silent, beats, states, o);
+    for (let j = 0; j < M; j++) if (nm.flags[j]) silent[j] = true;
+    if (o.debug) o.debug.nonMusic = nm;
+  }
 
   // Pass 1: chords without key knowledge -> key -> pass 2 with a diatonic prior.
-  const states = buildStates(o.vocabulary);
   const hmm = { beta: o.beta, selfTransition: o.selfTransition };
   const keyScores = keyCorrelations(bt, silent, durations);
-  const path1 = viterbi(scoreSteps(bt, bb, silent, states, { bassWeight: o.bassWeight }), hmm);
+  const path1 = viterbi(scoreSteps(bt, bb, silent, states, { bassWeight: o.bassWeight, contrast: o.contrast }), hmm);
   const key = refineKey(keyScores, path1.map((s, j) => ({ chord: states[s].chord, duration: durations[j] })));
-  const scores2 = scoreSteps(bt, bb, silent, states, { bassWeight: o.bassWeight, key, keyBonus: o.keyBonus });
+  const scores2 = scoreSteps(bt, bb, silent, states, { bassWeight: o.bassWeight, key, keyBonus: o.keyBonus, contrast: o.contrast });
   const path = viterbi(scores2, hmm);
 
   let beatChords = path.map((s) => states[s].chord);
@@ -173,30 +222,59 @@ export function analyzeAudio(samples, sampleRate, options = {}) {
     confidence: +(s.confSum / (s.endBeat - s.startBeat)).toFixed(3),
   }));
 
-  // Downbeat phase: the bar line position where chord changes line up best.
+  // Bars. A video can hold several stretches of music separated by talking, applause
+  // or silence, and each stretch starts on its own downbeat, so bar lines are placed
+  // separately for each one. Breaks of two bars or more with no chords split them.
   const bpb = Math.max(1, o.beatsPerBar | 0);
   const onsetAt = (t) => on.env[Math.min(on.env.length - 1, Math.max(0, Math.round(t * on.frameRate)))] || 0;
-  let phase = 0;
-  let bestPhase = -Infinity;
-  for (let p = 0; p < bpb; p++) {
-    let sc = 0;
-    for (let j = 0; j < M; j++) {
-      const pos = (((j - p) % bpb) + bpb) % bpb;
-      const change = j > 0 && chordId(beatChords[j]) !== chordId(beatChords[j - 1]);
-      if (pos === 0) sc += (change ? 1 : 0) + 0.05 * onsetAt(beats[j]);
-      else if (bpb % 2 === 0 && pos === bpb / 2 && change) sc += 0.3;
+  const parts = []; // [from, to, isBreak]
+  for (let j = 0; j < M; ) {
+    let k = j;
+    while (k < M && isNoChord(beatChords[k])) k++;
+    if (k - j >= 2 * bpb) {
+      parts.push([j, k, true]);
+      j = k;
+      continue;
     }
-    if (sc > bestPhase) {
-      bestPhase = sc;
-      phase = p;
+    // Music runs until the next long break.
+    let end = k;
+    while (end < M) {
+      let r = end;
+      while (r < M && isNoChord(beatChords[r])) r++;
+      if (r - end >= 2 * bpb) break;
+      end = r > end ? r : end + 1;
     }
+    parts.push([j, end, false]);
+    j = end;
   }
   const bars = [];
   const pushBar = (j0, j1, pickup = false) => {
     bars.push({ start: bounds[j0], end: bounds[j1], pickup, beats: beatChords.slice(j0, j1) });
   };
-  if (phase > 0) pushBar(0, Math.min(phase, M), true);
-  for (let j = phase; j < M; j += bpb) pushBar(j, Math.min(j + bpb, M));
+  for (const [from, to, isBreak] of parts) {
+    if (isBreak) {
+      for (let j = from; j < to; j += bpb) pushBar(j, Math.min(j + bpb, to));
+      continue;
+    }
+    // Downbeat phase: the bar line position where chord changes line up best.
+    let phase = 0;
+    let bestPhase = -Infinity;
+    for (let p = 0; p < bpb; p++) {
+      let sc = 0;
+      for (let j = from; j < to; j++) {
+        const pos = (((j - from - p) % bpb) + bpb) % bpb;
+        const change = j > from && chordId(beatChords[j]) !== chordId(beatChords[j - 1]);
+        if (pos === 0) sc += (change ? 1 : 0) + 0.05 * onsetAt(beats[j]);
+        else if (bpb % 2 === 0 && pos === bpb / 2 && change) sc += 0.3;
+      }
+      if (sc > bestPhase) {
+        bestPhase = sc;
+        phase = p;
+      }
+    }
+    if (phase > 0) pushBar(from, Math.min(from + phase, to), true);
+    for (let j = from + phase; j < to; j += bpb) pushBar(j, Math.min(j + bpb, to));
+  }
   // Drop silent bars at either end (lead-in noise, reverb tails).
   const allSilent = (bar) => bar.beats.every(isNoChord);
   while (bars.length > 1 && allSilent(bars[bars.length - 1])) bars.pop();

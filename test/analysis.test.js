@@ -52,6 +52,43 @@ test('silence produces no chords and does not crash', () => {
   assert.ok(a.segments.every((s) => s.chord.quality === 'N'));
 });
 
+test('talking or applause between songs is marked "no chord" and bars restart after it', () => {
+  const prog = ['G', 'D', 'Em', 'C', 'G', 'D', 'C', 'C'];
+  const a1 = synthesize({ progression: prog, bpm: 96, seed: 1 });
+  const a2 = synthesize({ progression: prog, bpm: 96, seed: 2 });
+  const sr = a1.sampleRate;
+  // 20 s of "applause": noise bursts with an uneven envelope and no pitch.
+  const gap = new Float32Array(20 * sr);
+  let r = 11;
+  const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  let env = 0.2;
+  for (let i = 0; i < gap.length; i++) {
+    if (i % 2205 === 0) env = 0.05 + 0.35 * rnd();
+    gap[i] = (rnd() * 2 - 1) * env;
+  }
+  const gap0 = a1.samples.length;
+  const all = new Float32Array(a1.samples.length + gap.length + a2.samples.length);
+  all.set(a1.samples, 0);
+  all.set(gap, gap0);
+  all.set(a2.samples, gap0 + gap.length);
+  const a = analyzeAudio(all, sr);
+  const gapStart = gap0 / sr, gapEnd = gapStart + 20;
+  // Most of the noise is "no chord"...
+  let nc = 0;
+  for (const s of a.segments) if (s.chord.quality === 'N') nc += Math.max(0, Math.min(s.end, gapEnd - 2) - Math.max(s.start, gapStart + 2));
+  assert.ok(nc / 16 >= 0.85, `noise marked as no chord: ${(nc / 16).toFixed(2)}`);
+  // ...both songs keep their chords...
+  const off = gapEnd;
+  const shifted = { ...a2, leadIn: a2.leadIn + off };
+  assert.ok(barAccuracy(a, a1, prog) >= 0.85, 'first song');
+  assert.ok(barAccuracy(a, shifted, prog) >= 0.85, 'second song');
+  // ...and the second song's bars start on its own downbeat.
+  const after = a.bars.filter((b) => b.start >= off && !b.pickup && b.beats.length === 4 && b.beats.every((c) => c.quality !== 'N'));
+  const uniform = after.filter((b) => b.beats.every((c) => c.root === b.beats[0].root && c.quality === b.beats[0].quality));
+  assert.ok(after.length >= 6 && uniform.length / after.length >= 0.85, `bars after the break: ${uniform.length}/${after.length}`);
+  assert.equal(a.key.name, 'G major');
+});
+
 test('analyzeAudioBuffer (browser path) mixes a stereo AudioBuffer-like object', async () => {
   const { analyzeAudioBuffer } = await import('../src/core.js');
   const prog = ['D', 'G', 'A', 'D', 'D', 'G', 'A', 'D'];

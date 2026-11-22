@@ -41,16 +41,67 @@ export function buildStates(vocabulary = 'majmin') {
 }
 
 /**
+ * Lift the notes that stand out from the background: subtract a share of the mean
+ * level. Dense live mixes (voice, reverb, cymbals, crowd) give fairly flat chroma,
+ * which makes every chord look alike; this restores the contrast between them.
+ */
+export function sharpen(c, amount) {
+  let mean = 0;
+  for (let i = 0; i < 12; i++) mean += c[i];
+  mean = (mean / 12) * amount;
+  const out = new Float64Array(12);
+  for (let i = 0; i < 12; i++) out[i] = Math.max(0, c[i] - mean);
+  return out;
+}
+
+/** Chord templates sharpened the same way as the chroma, so both are compared like for like. */
+const sharpCache = new WeakMap();
+function sharpTemplates(states, amount) {
+  let byAmount = sharpCache.get(states);
+  if (!byAmount) sharpCache.set(states, (byAmount = new Map()));
+  if (!byAmount.has(amount)) {
+    byAmount.set(amount, states.map((s) => {
+      if (!s.template) return null;
+      const t = sharpen(s.template, amount);
+      let n = 0;
+      for (let i = 0; i < 12; i++) n += t[i] * t[i];
+      n = Math.sqrt(n) || 1;
+      for (let i = 0; i < 12; i++) t[i] /= n;
+      return t;
+    }));
+  }
+  return byAmount.get(amount);
+}
+
+/** Best raw template fit (cosine) for one chroma vector; 0 when it is empty. */
+export function bestFit(c, states, contrast = 0) {
+  const v = contrast > 0 ? sharpen(c, contrast) : c;
+  let norm = 0;
+  for (let i = 0; i < 12; i++) norm += v[i] * v[i];
+  norm = Math.sqrt(norm);
+  if (norm < 1e-9) return 0;
+  let best = 0;
+  for (let s = 1; s < states.length; s++) {
+    const t = states[s].template;
+    let dot = 0;
+    for (let i = 0; i < 12; i++) dot += v[i] * t[i];
+    if (dot / norm > best) best = dot / norm;
+  }
+  return best;
+}
+
+/**
  * Score every (step, state) pair. Scores are roughly cosine similarities (0..1).
  * @returns {Float64Array[]}
  */
 export function scoreSteps(treble, bass, silent, states, opts = {}) {
-  const { bassWeight = 0.1, key = null, keyBonus = 0.03, noChordScore = 0.3 } = opts;
+  const { bassWeight = 0.1, key = null, keyBonus = 0.03, noChordScore = 0.3, contrast = 0 } = opts;
   const S = states.length;
+  const templates = contrast > 0 ? sharpTemplates(states, contrast) : states.map((s) => s.template);
   const diatonic = states.map((s) => (key ? isDiatonic(s.chord, key) : false));
   const rows = new Array(treble.length);
   for (let t = 0; t < treble.length; t++) {
-    const c = treble[t];
+    const c = contrast > 0 ? sharpen(treble[t], contrast) : treble[t];
     const row = new Float64Array(S);
     let norm = 0;
     for (let i = 0; i < 12; i++) norm += c[i] * c[i];
@@ -65,7 +116,8 @@ export function scoreSteps(treble, bass, silent, states, opts = {}) {
     for (let i = 0; i < 12; i++) if (b[i] > bmax) bmax = b[i];
     row[0] = noChordScore;
     for (let s = 1; s < S; s++) {
-      const { template, penalty, chord } = states[s];
+      const { penalty, chord } = states[s];
+      const template = templates[s];
       let dot = 0;
       for (let i = 0; i < 12; i++) dot += c[i] * template[i];
       let sc = dot / norm - penalty;
