@@ -309,6 +309,8 @@ details.menu summary::-webkit-details-marker{display:none}
     return `<span class="steps">${STAGES.map(([, l], i) => `<span class="${i === at ? 'on' : ''}">${i < at ? '✓ ' : ''}${l}</span>`).join('')}</span>`;
   };
   const showView = (v) => { $('welcome').hidden = v !== 'welcome'; $('work').hidden = v !== 'work'; };
+  // Keep the address bar clean: nothing is added after the page's address.
+  const clearHash = () => { if (location.hash) try { history.replaceState(null, '', location.pathname + location.search); } catch {} };
 
   /* ================= chord naming (mirrors renderSheet so the chart and exports agree) ================= */
   function view() {
@@ -598,7 +600,7 @@ details.menu summary::-webkit-details-marker{display:none}
     ytBroken = false;
     resetAnalyser();
     showView('work');
-    try { history.replaceState(null, '', '#' + id); } catch {}
+    clearHash();
     showYouTube(id);
     const saved = fresh ? null : loadCached(id);
     if (saved?.analysis) {
@@ -889,7 +891,7 @@ details.menu summary::-webkit-details-marker{display:none}
     $('url').value = '';
     resetAnalyser();
     showView('work');
-    try { history.replaceState(null, '', location.pathname); } catch {}
+    clearHash();
     const job = { runs: [], sr: 0, job: ++jobSeq };
     building = job;
     setIdleUi(false);
@@ -963,7 +965,8 @@ details.menu summary::-webkit-details-marker{display:none}
   }
   window.chordSheetApp = { startListening, stopListening, openFile }; // handy for scripting and tests
 
-  // #VIDEO_ID opens that video (its saved chart, if any). Sharing needs a click, so don't prompt on load.
+  // Older links ending in #VIDEO_ID still open that video (its saved chart, if any); the address is then cleaned up.
+  // Sharing needs a click, so don't prompt on load.
   const fromHash = location.hash.slice(1);
   if (/^[\w-]{11}$/.test(fromHash)) {
     $('url').value = `https://www.youtube.com/watch?v=${fromHash}`;
@@ -987,7 +990,7 @@ details.menu summary::-webkit-details-marker{display:none}
     msg('');
     pieces = [];
     onPiece = null;
-    try { history.replaceState(null, '', location.pathname); } catch {}
+    clearHash();
     showView('welcome');
     drawRecent();
     $('url').focus();

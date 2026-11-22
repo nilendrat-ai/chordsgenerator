@@ -125,7 +125,7 @@ Also on the page:
 
 - **Key (transpose), Capo** (or "Easiest") and **Simple chords**, all applied instantly.
 - **Export:** copy as text, or download text, ChordPro, Markdown or JSON.
-- **Saved charts:** finished charts are kept in your browser (the last 12 videos) and listed under **Recent** on the start screen, opening instantly with no listening. `https://…/chordsgenerator/#VIDEO_ID` links straight to one. **Clear saved charts** removes them.
+- **Saved charts:** finished charts are kept in your browser (the last 12 videos) and listed under **Recent** on the start screen, opening instantly with no listening. **Clear saved charts** removes them.
 - **Reset:** stops listening and the video, clears the current song, and returns to the start screen.
 - **Listen to another tab instead:** captures any tab (YouTube, Spotify web, SoundCloud…), for videos that block embedding.
 - **Open MP3:** pick an audio file (MP3, M4A, WAV, OGG, FLAC, or the sound of an MP4/WebM video), or drop one anywhere on the page. It's decoded and analysed straight away, with no sharing prompt and no waiting for the song to play, and it works in every modern browser. The file stays on your computer; the first 20 minutes are analysed. Charts from files aren't saved to Recent.
