@@ -18,6 +18,7 @@
 :root{color-scheme:light dark;--bg:light-dark(#fff,#111214);--ink:light-dark(#111,#f1f1ee);--mute:light-dark(#5f5f5a,#a3a39c);--panel:light-dark(#f2f2ef,#1b1c1f);--line:light-dark(#dcdcd6,#2c2d31);--acc:#ff4a1c;--err:light-dark(#c4260a,#ff7a5c)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
 .wrap{max-width:1240px;margin:0 auto;padding:0 max(4vw,16px)}
@@ -88,7 +89,17 @@ details{flex-basis:100%}
 summary{cursor:pointer;min-height:32px;color:var(--ink);font-size:15px}
 textarea{width:100%;min-height:120px;font:14px/1.4 "JetBrains Mono",ui-monospace,monospace;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin:8px 0}
 .note{font-size:15px;color:var(--mute);margin:10px 0 0}
-pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margin:14px 0 0;padding:18px;border-radius:12px;border:1px solid var(--line);min-height:300px;white-space:pre}
+pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margin:14px 0 0;padding:18px;border-radius:12px;border:1px solid var(--line);min-height:300px;white-space:pre;position:relative}
+@media(min-width:900px){#sheet pre{max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain}}
+.chord-sheet .ch{cursor:pointer;border-radius:4px;font-weight:700;transition:background-color .12s}
+.chord-sheet .ch:hover{background:color-mix(in oklab,var(--acc) 18%,transparent)}
+.chord-sheet .ch.on{background:var(--acc);color:#fff;box-shadow:0 0 0 2px var(--acc)}
+.chord-sheet .ly{cursor:pointer;border-radius:3px}
+.chord-sheet .ly.on{background:color-mix(in oklab,var(--acc) 16%,transparent);font-weight:700}
+.tl div.on{box-shadow:inset 0 0 0 3px var(--ink);z-index:1}
+button.rec.nudge{animation:nudge 1s ease-in-out 4}
+@keyframes nudge{50%{transform:scale(1.06);box-shadow:0 0 0 6px color-mix(in oklab,var(--acc) 35%,transparent)}}
+@media(prefers-reduced-motion:reduce){button.rec.nudge{animation:none}}
 .small{font-size:13px;color:var(--mute)}
 @media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.now{grid-template-columns:minmax(0,1fr)}.now .chord{grid-row:auto}pre{font-size:13px;padding:12px}}
@@ -99,10 +110,10 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
 <header>
   <div class="wrap">
     <h1>Chord sheet from a YouTube video</h1>
-    <p class="lede">Runs entirely in your browser, with no server or upload. Load a video, press Listen and play it. The chords show up live as it plays, and the full sheet is built when it ends.</p>
+    <p class="lede">Runs entirely in your browser, with no server or upload. Paste a link and press Get chords. Share this tab's audio when asked, and the video plays from the start while the chords are worked out. Once it's done, the sheet follows the video as you play along.</p>
     <form class="url" id="urlForm">
       <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube video URL" required>
-      <button class="go" id="go" type="submit">Load video</button>
+      <button class="go" id="go" type="submit">Get chords</button>
     </form>
     <div class="row">
       <label>Chords <select id="vocab"><option value="majmin">Major / minor</option><option value="sevenths">+ sevenths</option><option value="full">Everything (sus, dim, aug)</option></select></label>
@@ -121,7 +132,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
         <button type="button" class="rec" id="listen"><i></i><span id="listenLabel">Listen &amp; get chords</span></button>
         <button type="button" id="stop" hidden>Stop &amp; build sheet</button>
         <button type="button" class="linkish" id="other">Listen to another tab instead</button>
-        <p class="hint" id="hint">In the share dialog, choose <b>This tab</b> and keep <b>Also share tab audio</b> switched on. Then play the video. Works in desktop Chrome and Edge.</p>
+        <p class="hint" id="hint">The page can only hear the video once you share it. In the dialog, choose <b>This tab</b> and keep <b>Also share tab audio</b> switched on. Works in desktop Chrome and Edge.</p>
       </div>
       <div class="now">
         <div class="chord" id="nowChord">–</div>
@@ -157,7 +168,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
         </details>
       </div>
       <p class="note" id="capoNote"></p>
-      <pre id="sheet"></pre>
+      <div id="sheet"></div>
     </section>
   </main>
 </div>
@@ -258,6 +269,16 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
   }
 
   /* ================= render ================= */
+  let marks = []; // [{el, s, e, ly}] timed spans in the sheet
+  let onMarks = []; // currently highlighted
+  let lastUserScroll = 0;
+  function showPlain(text) {
+    const pre = document.createElement('pre');
+    pre.textContent = text;
+    $('sheet').replaceChildren(pre);
+    marks = [];
+    onMarks = [];
+  }
   function render() {
     const a = S.analysis;
     $('tr').textContent = (S.transpose > 0 ? '+' : '') + S.transpose;
@@ -268,21 +289,27 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
       $('facts').innerHTML = title ? `<h2>${esc(title)}</h2>${by}` : '';
       $('chips').innerHTML = '';
       $('capoNote').textContent = '';
-      $('sheet').textContent = S.source === 'external'
+      showPlain(S.source === 'external'
         ? 'Listening to another tab.\nPlay the song there, then press “Stop & build sheet”.'
         : S.source === 'youtube'
-        ? '1. Press “Listen & get chords”.\n2. In the share dialog choose This tab and keep\n   “Also share tab audio” switched on.\n3. Play the video. Chords appear live, and the full\n   sheet is built here when the video ends or you\n   press Stop.\n\nTip: listen to the whole song for the best result.'
-        : 'Load a YouTube video, play the demo song, or open an audio file.';
+        ? '1. Press “Listen & get chords”.\n2. In the share dialog choose This tab and keep\n   “Also share tab audio” switched on.\n3. The video restarts and plays. Chords appear live,\n   and the full sheet is built here when the video\n   ends or you press Stop.\n\nAfter that, the chords light up here as you play.'
+        : 'Load a YouTube video, play the demo song, or open an audio file.');
       S.sheet = '';
       return;
     }
     const v = view();
-    S.sheet = renderSheet(a, {
+    const opts = {
       format: $('format').value, lyrics: lyrics(), title: title || 'Untitled', artist: S.meta.artist, source: S.meta.url,
       transpose: S.transpose, capo: $('capo').value === 'none' ? 'none' : $('capo').value === 'auto' ? 'auto' : +$('capo').value,
       simplify: $('simplify').checked,
-    });
-    $('sheet').textContent = S.sheet;
+    };
+    S.sheet = renderSheet(a, opts);
+    if (opts.format === 'text') {
+      // Same sheet, with every chord and lyric line tagged with its time for play-along highlighting.
+      $('sheet').innerHTML = renderSheet(a, { ...opts, format: 'html' });
+      marks = [...$('sheet').querySelectorAll('.ch, .ly')].map((el) => ({ el, s: +el.dataset.s, e: +el.dataset.e, ly: el.classList.contains('ly') }));
+    } else showPlain(S.sheet);
+    onMarks = [];
 
     const key = theory.keyName(theory.transposeKey(a.key, S.transpose));
     const hz = 440 * Math.pow(2, a.tuningCents / 1200);
@@ -328,7 +355,10 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     $('t0').textContent = formatTime(t);
     const cur = segs[i];
     $('barFill').style.width = cur ? `${Math.min(100, ((t - cur.start) / (cur.end - cur.start)) * 100)}%` : '0%';
+    highlight(t, force);
     if (i === lastSeg && !force) return;
+    $('tl').querySelectorAll('div.on').forEach((d) => d.classList.remove('on'));
+    $('tl').children[i]?.classList.add('on');
     lastSeg = i;
     const v = view();
     $('nowChord').textContent = cur ? v.name(cur.chord) : '–';
@@ -337,6 +367,41 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     $('next').innerHTML = S.source === 'external' ? 'Recorded from another tab, so there’s no playback sync' : nx ? `Next <b>${esc(v.name(nx.chord))}</b> at ${formatTime(nx.start)}` : 'End of song';
   }
   setInterval(() => tick(false), 80);
+
+  // Light up the chord and lyric line under the playhead, and keep them in view.
+  function highlight(t, force) {
+    let ch = null;
+    let ly = null;
+    for (const m of marks) {
+      if (t + 0.05 < m.s || t >= m.e) continue;
+      if (m.ly) { if (!ly || m.s >= ly.s) ly = m; } else if (!ch || m.s > ch.s) ch = m;
+    }
+    const next = [ch, ly].filter(Boolean);
+    if (!force && next.length === onMarks.length && next.every((m, k) => m === onMarks[k])) return;
+    for (const m of onMarks) m.el.classList.remove('on');
+    for (const m of next) m.el.classList.add('on');
+    onMarks = next;
+    const target = ly || ch;
+    if (!target || !isPlaying() || Date.now() - lastUserScroll < 3000) return;
+    const pre = target.el.closest('pre');
+    if (pre && pre.scrollHeight > pre.clientHeight + 4) {
+      const top = target.el.offsetTop - pre.clientHeight / 3;
+      if (Math.abs(pre.scrollTop - top) > 24) pre.scrollTo({ top, behavior: 'smooth' });
+    } else {
+      const r = target.el.getBoundingClientRect();
+      if (r.top < 60 || r.bottom > innerHeight - 60) target.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+  const isPlaying = () => (S.source === 'youtube' ? yt?.getPlayerState?.() === 1 : S.source === 'audio' ? !$('audio').paused : false);
+  for (const ev of ['wheel', 'touchmove', 'keydown']) $('sheet').addEventListener(ev, () => (lastUserScroll = Date.now()), { passive: true });
+  $('sheet').addEventListener('click', (e) => {
+    const el = e.target.closest('.ch, .ly');
+    if (!el || !S.analysis || cap) return;
+    lastUserScroll = 0;
+    seek(+el.dataset.s);
+    if (S.source === 'youtube') yt?.playVideo?.();
+    else if (S.source === 'audio') $('audio').play().catch(() => {});
+  });
   $('tl').addEventListener('click', (e) => {
     if (!S.analysis || cap) return;
     const r = $('tl').getBoundingClientRect();
@@ -392,13 +457,46 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
       if (yt?.cueVideoById) yt.cueVideoById(id);
       else yt = new YT.Player('yt', {
         videoId: id, playerVars: { playsinline: 1, rel: 0 },
-        events: { onReady: onYtMeta, onStateChange: onYtState, onError: onYtError },
+        events: { onReady: onYtReady, onStateChange: onYtState, onError: onYtError },
       });
     } catch (err) {
       $('art').hidden = false;
       $('art').textContent = err.message;
       ytBroken = true;
     }
+  }
+  // Finished analyses are kept in this browser, so a video only needs listening to once.
+  const CACHE = 'ytchords:v1:';
+  function saveCached(id, data) {
+    try {
+      const index = JSON.parse(localStorage.getItem(CACHE + 'index') || '[]').filter((x) => x !== id);
+      index.unshift(id);
+      for (const old of index.splice(12)) localStorage.removeItem(CACHE + old);
+      localStorage.setItem(CACHE + id, JSON.stringify(data));
+      localStorage.setItem(CACHE + 'index', JSON.stringify(index));
+    } catch { /* storage full or blocked: not essential */ }
+  }
+  function loadCached(id) {
+    try { return JSON.parse(localStorage.getItem(CACHE + id) || 'null'); } catch { return null; }
+  }
+  function loadVideo(id, { listen }) {
+    S.lyricsRaw = null;
+    S.lyricOffset = 0;
+    $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
+    try { history.replaceState(null, '', '#' + id); } catch {}
+    showYouTube(id);
+    const saved = loadCached(id);
+    if (saved?.analysis) {
+      S.analysis = saved.analysis;
+      Object.assign(S.meta, { title: saved.title || S.meta.title, artist: saved.artist || S.meta.artist });
+      if (saved.lyrics) { S.lyricsRaw = saved.lyrics; S.lyricOffset = saved.lyricOffset || 0; $('lyrInfo').textContent = 'Lyrics saved with this video.'; }
+      lastSeg = -1;
+      render();
+      status(`Loaded the chords you saved for this video on ${new Date(saved.savedAt).toLocaleDateString()}. Press play on the video to follow along, or Listen again to redo them.`);
+      return;
+    }
+    if (listen) startListening({ restart: true });
+    else status('Video loaded. Press “Listen & get chords” and share this tab to work out the chords.');
   }
   function onYtMeta() {
     const d = yt?.getVideoData?.();
@@ -411,6 +509,22 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
   function onYtState(e) {
     if (e.data === 1 || e.data === 5) onYtMeta();
     if (e.data === 0 && cap?.mode === 'embed') stopListening();
+    if (e.data === 1 && !cap && !S.analysis && S.source === 'youtube' && !job) {
+      status('The video is playing, but the page isn’t listening yet, so no chords can be worked out. Press “Listen & get chords” and share this tab (with tab audio on).', true);
+      $('listen').classList.remove('nudge');
+      void $('listen').offsetWidth;
+      $('listen').classList.add('nudge');
+    }
+  }
+  function onYtReady() {
+    onYtMeta();
+    if (cap?.mode === 'embed' && cap.restart) restartVideo();
+  }
+  function restartVideo() {
+    if (typeof yt?.seekTo !== 'function') return; // player not ready yet; onYtReady will do it
+    cap.restart = false;
+    yt.seekTo(0, true);
+    yt.playVideo();
   }
   function onYtError(e) {
     ytBroken = true;
@@ -425,7 +539,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     registerProcessor('tap',Tap);`;
   const rms = (x) => { let s = 0; for (let i = 0; i < x.length; i += 4) s += x[i] * x[i]; return Math.sqrt(s / (x.length / 4)); };
 
-  async function startListening({ otherTab = false, stream = null } = {}) {
+  async function startListening({ otherTab = false, stream = null, restart = true } = {}) {
     if (cap) return;
     try {
       if (!stream) {
@@ -473,7 +587,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
         $('lyrInfo').textContent = 'Recording another tab. Paste lyrics below if you want them on the sheet.';
         setSource('external', { title: 'Audio from another tab' });
       }
-      cap = { ctx, stream, sr: ctx.sampleRate, total: 0, runs: [], recording: false, mode: embed ? 'embed' : 'external', idleLoud: 0 };
+      cap = { ctx, stream, sr: ctx.sampleRate, total: 0, runs: [], recording: false, mode: embed ? 'embed' : 'external', idleLoud: 0, restart: embed && restart };
       liveSegs = [];
       lastLive = null;
       tracks[0].addEventListener('ended', () => stopListening());
@@ -483,8 +597,12 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
       $('stop').hidden = false;
       $('other').hidden = true;
       $('next').textContent = embed ? 'Play the video' : 'Play the song in the other tab';
-      status(embed ? 'Listening. Play the video, and the sheet is built when it ends.' : 'Listening to the other tab. Press Stop when the song is over.');
-      if (embed && yt?.getPlayerState?.() !== 1) yt?.playVideo?.();
+      $('listen').classList.remove('nudge');
+      status(embed ? 'Listening. The video plays from the start, and the full sheet is built when it ends (or press Stop).' : 'Listening to the other tab. Press Stop when the song is over.');
+      if (embed) {
+        if (cap.restart) restartVideo();
+        else if (yt?.getPlayerState?.() !== 1) yt?.playVideo?.();
+      }
     } catch (err) {
       status(err.name === 'NotAllowedError' ? 'Sharing was cancelled.' : esc(err.message), err.name !== 'NotAllowedError');
     }
@@ -588,10 +706,16 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     S.analysis = j.kind === 'capture' ? remap(m.analysis, j.runs, j.sr) : m.analysis;
     lastSeg = -1;
     render();
+    if (j.kind === 'capture' && S.source === 'youtube' && S.videoId) saveCachedNow();
     const a = S.analysis;
     status(`Done: ${a.segments.filter((s) => s.chord.quality !== 'N').length} chord changes in ${a.key.name}${a.tempo ? ` at ${Math.round(a.tempo)} BPM` : ''}.${S.lyricsRaw ? '' : ' Add lyrics below to see chords over the words.'}`);
     if (!S.lyricsRaw && S.meta.title && S.source !== 'external') findLyrics(true);
   };
+
+  function saveCachedNow() {
+    if (S.source !== 'youtube' || !S.videoId || !S.analysis) return;
+    saveCached(S.videoId, { analysis: S.analysis, title: S.meta.title, artist: S.meta.artist, lyrics: S.lyricsRaw, lyricOffset: S.lyricOffset, savedAt: Date.now() });
+  }
 
   /* ================= other inputs ================= */
   const busy = (b) => { for (const id of ['demo', 'listen']) $(id).disabled = b; };
@@ -600,14 +724,10 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     e.preventDefault();
     const id = videoId($('url').value);
     if (!id) return status('That doesn’t look like a YouTube video link. Try youtube.com/watch?v=… or youtu.be/…', true);
-    S.lyricsRaw = null;
-    S.lyricOffset = 0;
-    $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
-    showYouTube(id);
-    status('Video loaded. Press “Listen & get chords”.');
-    try { history.replaceState(null, '', '#' + id); } catch {}
+    // The share dialog has to open from this click, so listening starts here too.
+    loadVideo(id, { listen: true });
   });
-  $('listen').addEventListener('click', () => startListening());
+  $('listen').addEventListener('click', () => startListening({ restart: true }));
   $('other').addEventListener('click', () => startListening({ otherTab: true }));
   $('stop').addEventListener('click', () => stopListening());
 
@@ -692,15 +812,16 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
       S.lyricOffset = 0;
       $('lyrInfo').textContent = `Using ${hit.artistName} – ${hit.trackName} from lrclib.net. If the words run early or late against the video, nudge the timing.`;
       render();
+      saveCachedNow();
     } catch (err) {
       $('lyrInfo').textContent = `Couldn’t reach lrclib.net (${err.message}). You can paste or open lyrics below instead.`;
     }
   }
   $('findLyr').addEventListener('click', () => findLyrics(false));
-  const nudge = (d) => { S.lyricOffset = Math.round((S.lyricOffset + d) * 10) / 10; render(); };
+  const nudge = (d) => { S.lyricOffset = Math.round((S.lyricOffset + d) * 10) / 10; render(); saveCachedNow(); };
   $('lyrEarly').addEventListener('click', () => nudge(-0.5));
   $('lyrLate').addEventListener('click', () => nudge(0.5));
-  $('lyrClear').addEventListener('click', () => { S.lyricsRaw = null; $('lyrInfo').textContent = 'Lyrics removed.'; render(); });
+  $('lyrClear').addEventListener('click', () => { S.lyricsRaw = null; $('lyrInfo').textContent = 'Lyrics removed.'; render(); saveCachedNow(); });
   function useLyricText(text, name = '') {
     const parsed = parseLyrics(text, name);
     if (!parsed.length) return ($('lyrInfo').textContent = 'No timed lines found. LRC lines look like [00:12.50] words; VTT has 00:00:12.500 --> … cues.');
@@ -709,6 +830,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
     $('lyrInfo').textContent = `Using ${parsed.length} timed lines${name ? ` from ${name}` : ''}.`;
     $('lyrBox').open = false;
     render();
+    saveCachedNow();
   }
   $('lyrApply').addEventListener('click', () => useLyricText($('lyrText').value));
   $('lyrFile').addEventListener('change', async () => {
@@ -745,7 +867,7 @@ pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margi
   const fromHash = location.hash.slice(1);
   if (/^[\w-]{11}$/.test(fromHash)) {
     $('url').value = `https://www.youtube.com/watch?v=${fromHash}`;
-    $('urlForm').requestSubmit();
+    loadVideo(fromHash, { listen: false }); // sharing needs a click, so don't open the dialog on load
   } else playDemo();
 }
 </script>

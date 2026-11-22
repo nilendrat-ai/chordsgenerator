@@ -1,6 +1,8 @@
 /**
  * Turn an analysis (+ optional timed lyrics) into a chord sheet.
- * Formats: 'text' (chords over lyrics), 'chordpro', 'markdown', 'json'.
+ * Formats: 'text' (chords over lyrics), 'html' (the text sheet with every chord
+ * and lyric line wrapped in a <span data-s data-e> carrying its start/end time,
+ * for play-along highlighting), 'chordpro', 'markdown', 'json'.
  */
 import {
   chordName, chordId, isNoChord, keyName, keyPrefersFlats, transposeChord, transposeKey, simplifyChord, noteName,
@@ -8,7 +10,7 @@ import {
 import { suggestCapo } from '../analysis/capo.js';
 import { median } from '../dsp/stats.js';
 
-export const FORMATS = ['text', 'chordpro', 'markdown', 'json'];
+export const FORMATS = ['text', 'html', 'chordpro', 'markdown', 'json'];
 
 export function formatTime(sec) {
   const s = Math.max(0, Math.round(sec));
@@ -22,7 +24,7 @@ function chordEvents(segments, line, lineEnd) {
   const events = [];
   const at = line.start + 0.05;
   const active = segments.find((s) => s.start <= at && s.end > at);
-  if (active) events.push({ time: line.start, chord: active.chord, wordIndex: 0 });
+  if (active) events.push({ time: line.start, end: active.end, chord: active.chord, wordIndex: 0 });
   const lastWordStart = words.length ? words[words.length - 1].start : line.start;
   for (const s of segments) {
     if (s.start <= at || s.start >= lineEnd - 0.05) continue;
@@ -32,7 +34,7 @@ function chordEvents(segments, line, lineEnd) {
       wi = 0;
       for (let i = 0; i < words.length; i++) if (words[i].start <= s.start + 0.15) wi = i;
     }
-    events.push({ time: s.start, chord: s.chord, wordIndex: wi });
+    events.push({ time: s.start, end: s.end, chord: s.chord, wordIndex: wi });
   }
   return events;
 }
@@ -87,8 +89,9 @@ function layoutLyric(block, name) {
     offsets.push(text.length);
     text += w.text;
   }
-  const placed = [];
-  let chordLine = '';
+  const placed = []; // word-anchored positions (ChordPro)
+  const chordPieces = []; // laid-out chord line, collisions pushed right
+  let col = 0;
   let prevLabel = null;
   for (const ev of block.events) {
     const label = name(ev.chord);
@@ -96,25 +99,50 @@ function layoutLyric(block, name) {
     prevLabel = label;
     let pos = ev.wordIndex >= offsets.length ? text.length + 1 : offsets[ev.wordIndex];
     placed.push({ pos, label });
-    if (chordLine.length) pos = Math.max(pos, chordLine.length + 1);
-    chordLine = chordLine.padEnd(pos) + label;
+    if (col) pos = Math.max(pos, col + 1);
+    if (pos > col) chordPieces.push({ t: ' '.repeat(pos - col) });
+    chordPieces.push({ t: label, s: ev.time, e: ev.end ?? ev.time, k: 'ch' });
+    col = pos + label.length;
   }
-  return { chordLine: chordLine.trimEnd(), text, placed };
+  return { chordPieces, text, placed };
 }
+
+// A sheet line is a list of pieces { t: text, k?: 'ch'|'ly', s?: start, e?: end }.
+const plain = (pieces) => pieces.map((p) => p.t).join('');
+const escHtml = (str) => str.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const toHtml = (pieces) => pieces
+  .map((p) => (p.k ? `<span class="${p.k}" data-s="${p.s.toFixed(2)}" data-e="${p.e.toFixed(2)}">${escHtml(p.t)}</span>` : escHtml(p.t)))
+  .join('');
 
 function barCell(bar, name) {
   const labels = bar.beats.map(name);
-  if (labels.every((l) => l === labels[0])) return labels[0];
-  return labels.map((l, i) => (i > 0 && l === labels[i - 1] ? '.' : l)).join(' ');
+  if (labels.every((l) => l === labels[0])) return [{ t: labels[0], s: bar.start, e: bar.end, k: 'ch' }];
+  const beat = (bar.end - bar.start) / labels.length;
+  const pieces = [];
+  labels.forEach((l, i) => {
+    if (i) pieces.push({ t: ' ' });
+    if (i > 0 && l === labels[i - 1]) return pieces.push({ t: '.' });
+    let j = i + 1;
+    while (j < labels.length && labels[j] === l) j++;
+    pieces.push({ t: l, s: bar.start + i * beat, e: bar.start + j * beat, k: 'ch' });
+  });
+  return pieces;
 }
 
 function gridLines(bars, name, { barsPerLine = 4, timestamps = true } = {}) {
   const cells = bars.map((b) => barCell(b, name));
-  const width = Math.max(4, ...cells.map((c) => c.length));
+  const width = Math.max(4, ...cells.map((c) => plain(c).length));
   const out = [];
   for (let i = 0; i < bars.length; i += barsPerLine) {
-    const row = cells.slice(i, i + barsPerLine).map((c) => c.padEnd(width)).join(' | ');
-    out.push(`${timestamps ? `[${formatTime(bars[i].start).padStart(5)}]  ` : ''}| ${row} |`);
+    const line = [{ t: `${timestamps ? `[${formatTime(bars[i].start).padStart(5)}]  ` : ''}| ` }];
+    cells.slice(i, i + barsPerLine).forEach((c, k) => {
+      if (k) line.push({ t: ' | ' });
+      line.push(...c);
+      const pad = width - plain(c).length;
+      if (pad > 0) line.push({ t: ' '.repeat(pad) });
+    });
+    line.push({ t: ' |' });
+    out.push(line);
   }
   return out;
 }
@@ -124,7 +152,7 @@ function gridLines(bars, name, { barsPerLine = 4, timestamps = true } = {}) {
 /**
  * @param {object} analysis result of analyzeAudio()
  * @param {object} [opts]
- * @param {'text'|'chordpro'|'markdown'|'json'} [opts.format]
+ * @param {'text'|'html'|'chordpro'|'markdown'|'json'} [opts.format]
  * @param {Array} [opts.lyrics] timed lyric lines (parseVtt/parseLrc)
  * @param {string} [opts.title]
  * @param {string} [opts.artist]
@@ -178,9 +206,14 @@ export function renderSheet(analysis, opts = {}) {
 
   if (format === 'json') return renderJson(analysis, blocks, meta, name, shift);
   if (format === 'chordpro') return renderChordPro(blocks, meta, name, { barsPerLine, shapeKey, flats });
-  const body = renderTextBody(blocks, name, { barsPerLine, timestamps });
+  const lines = renderTextBody(blocks, name, { barsPerLine, timestamps });
+  const body = lines.map(plain).join('\n');
   if (format === 'markdown') return renderMarkdown(meta, body, shapeKey, flats);
-  return [...textHeader(meta, shapeKey, flats), '', body].join('\n') + '\n';
+  const header = [...textHeader(meta, shapeKey, flats), ''];
+  if (format === 'html') {
+    return `<pre class="chord-sheet">${[...header.map(escHtml), ...lines.map(toHtml)].join('\n')}\n</pre>\n`;
+  }
+  return [...header, body].join('\n') + '\n';
 }
 
 function headerFacts(meta, shapeKey, flats) {
@@ -206,23 +239,24 @@ function textHeader(meta, shapeKey, flats) {
   return lines;
 }
 
+/** @returns {Array<Array<{t, k?, s?, e?}>>} one array of pieces per line */
 function renderTextBody(blocks, name, { barsPerLine, timestamps }) {
   const out = [];
   for (const b of blocks) {
     if (b.type === 'grid') {
-      if (out.length) out.push('');
-      if (b.label) out.push(`[${b.label}]`);
+      if (out.length) out.push([]);
+      if (b.label) out.push([{ t: `[${b.label}]` }]);
       out.push(...gridLines(b.bars, name, { barsPerLine, timestamps }));
-      out.push('');
+      out.push([]);
     } else {
-      if (b.stanzaBreak) out.push('');
-      const { chordLine, text } = layoutLyric(b, name);
-      if (chordLine) out.push(chordLine);
-      out.push(text);
+      if (b.stanzaBreak) out.push([]);
+      const { chordPieces, text } = layoutLyric(b, name);
+      if (chordPieces.length) out.push(chordPieces);
+      out.push([{ t: text, s: b.start, e: b.end, k: 'ly' }]);
     }
   }
-  while (out.length && out[out.length - 1] === '') out.pop();
-  return out.join('\n');
+  while (out.length && !out[out.length - 1].length) out.pop();
+  return out;
 }
 
 function renderMarkdown(meta, body, shapeKey, flats) {

@@ -9,7 +9,7 @@ Usage:
   ytchords <youtube-url | audio-file> [options]
 
 Output:
-  -f, --format <fmt>       text | chordpro | markdown | json        (default: text)
+  -f, --format <fmt>       text | html | chordpro | markdown | json (default: text)
   -o, --output <file>      write to a file instead of stdout
 
 Chords:

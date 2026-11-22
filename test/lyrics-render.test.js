@@ -87,3 +87,15 @@ test('ChordPro and JSON output', () => {
   assert.equal(json.segments[0].chord, 'G');
   assert.equal(json.lyrics[0].chords[1].name, 'D');
 });
+
+test('HTML sheet has the same text as the plain sheet, with timed chord and lyric spans', () => {
+  const lyrics = [{ start: 8, end: 12, text: 'one two three four', words: [{ text: 'one', start: 8 }, { text: 'two', start: 9 }, { text: 'three', start: 10 }, { text: 'four', start: 11 }] }];
+  const opts = { lyrics, title: 'A & B <test>' };
+  const text = renderSheet(fakeAnalysis(), opts);
+  const html = renderSheet(fakeAnalysis(), { ...opts, format: 'html' });
+  const unescape = (s) => s.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  assert.equal(unescape(html).trimEnd(), text.trimEnd());
+  assert.match(html, /<span class="ch" data-s="10.00" data-e="12.00">D<\/span>/);
+  assert.match(html, /<span class="ly" data-s="8.00" data-e="12.00">one two three four<\/span>/);
+  assert.match(html, /<span class="ch" data-s="0.00" data-e="2.00">G<\/span>/); // intro grid bar
+});

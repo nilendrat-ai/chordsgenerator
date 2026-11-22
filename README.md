@@ -47,7 +47,7 @@ ytchords ./my-song.mp3 --lyrics ./my-song.lrc --transpose -2
 
 | Option | Description |
 |---|---|
-| `-f, --format` | `text` (default), `chordpro`, `markdown`, `json` |
+| `-f, --format` | `text` (default), `html`, `chordpro`, `markdown`, `json` |
 | `-o, --output` | write to a file |
 | `-v, --vocab` | `majmin` (default), `sevenths` (adds 7, maj7, m7), `full` (adds sus2, sus4, dim, aug) |
 | `-t, --transpose <n>` | transpose by n semitones |
@@ -68,7 +68,7 @@ ytchords ./my-song.mp3 --lyrics ./my-song.lrc --transpose -2
 import { generateChordSheet } from 'yt-chord-sheet';
 
 const { sheet, analysis, lyrics, meta } = await generateChordSheet('https://youtu.be/VIDEO_ID', {
-  format: 'text',          // 'text' | 'chordpro' | 'markdown' | 'json'
+  format: 'text',          // 'text' | 'html' | 'chordpro' | 'markdown' | 'json'
   vocabulary: 'majmin',    // 'majmin' | 'sevenths' | 'full' | ['maj','min','7']
   capo: 'auto',            // 'none' | 'auto' | number
   transpose: 0,
@@ -98,6 +98,8 @@ const chordpro = renderSheet(analysis, { format: 'chordpro', lyrics, title: meta
 }
 ```
 
+`format: 'html'` returns the text sheet inside `<pre class="chord-sheet">`, with every chord wrapped in `<span class="ch" data-s data-e>` and every lyric line in `<span class="ly" data-s data-e>`, holding start and end times in seconds. That's what the web page uses to highlight chords during playback.
+
 Lower-level building blocks are exported too: `downloadYouTube`, `decodeAudioFile`, `analyzeAudio(samples, sampleRate, opts)`, `parseVtt`, `parseLrc`, `suggestCapo` and `theory` (note spelling, transposition, keys).
 
 ## In the browser (no server)
@@ -106,15 +108,18 @@ The analyser is pure JavaScript with no dependencies. It runs in any modern brow
 
 ### The ready-made page: `dist/chord-sheet.html`
 
-This is a single 70 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
+This is a single ~77 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
 
 - **Live:** every push to `main` runs the tests, builds the page and publishes it to GitHub Pages at `https://nilendrat-ai.github.io/chordsgenerator/` (see `.github/workflows/pages.yml`). This needs **Settings → Pages → Source: GitHub Actions** turned on once.
 - **Download:** each workflow run also attaches the built `dist/` folder as an artifact.
 - **Build it yourself:** run `npm install && npm run build`, then open `dist/chord-sheet.html` or host it anywhere (Netlify, any static folder).
 
-1. Paste a YouTube link and press **Load video**.
-2. Press **Listen & get chords**. In the share dialog, choose **This tab** and keep **Also share tab audio** switched on.
-3. Play the video. The current chord appears live, about half a second behind the music. When the video ends, or you press **Stop**, the whole recording is analysed and the full sheet appears, synced to the video for playing along.
+1. Paste a YouTube link and press **Get chords**.
+2. The share dialog opens straight away. Choose **This tab** and keep **Also share tab audio** switched on. The page can only hear the video once it's shared. If you just press play on the video, it warns you instead of silently doing nothing.
+3. The video restarts from 0:00 and plays. The current chord appears live, about half a second behind the music. When the video ends, or you press **Stop**, the whole recording is analysed and the full sheet appears.
+4. Play the video again to play along. The current chord and lyric line light up in the sheet, and it scrolls to follow. Click any chord to jump the video there.
+
+Finished sheets are saved in your browser (the last 12 videos), so opening the same video again shows its chords instantly, with no listening needed. `https://…/chordsgenerator/#VIDEO_ID` links straight to one.
 
 Also on the page:
 
