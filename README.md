@@ -125,6 +125,7 @@ Also on the page:
 
 - **Key (transpose), Capo** (or "Easiest") and **Simple chords**, all applied instantly.
 - **Export:** copy as text, or download text, ChordPro, Markdown or JSON.
+- **Breaks:** talking, applause and other stretches with no music fold into a single "No music" row in the chart, which you can click to jump to.
 - **Saved charts:** finished charts are kept in your browser (the last 12 videos) and listed under **Recent** on the start screen, opening instantly with no listening. **Clear saved charts** removes them.
 - **Reset:** stops listening and the video, clears the current song, and returns to the start screen.
 - **Listen to another tab instead:** captures any tab (YouTube, Spotify web, SoundCloud…), for videos that block embedding.
@@ -167,10 +168,11 @@ const live = createLiveTracker({ sampleRate: ctx.sampleRate });
 2. **Tuning.** Spectral peaks are folded onto the semitone grid. Their circular mean gives the cents offset from A440, so detuned recordings still map onto the right notes.
 3. **Chroma.** Each hop gets two FFT frames on the same centre: 4096 samples for the treble chroma and 8192 for a separate bass chroma. Peaks are refined by parabolic interpolation and added to the 12 pitch classes with a Gaussian weight.
 4. **Beats.** The tempo comes from the autocorrelation of a log spectral-flux onset envelope, with a log-normal prior around 125 BPM. Ellis-style dynamic programming then tracks the beats, and chroma is averaged within each beat.
-5. **Chords.** Every candidate chord has a template that includes the harmonic series (partials 1–6). Each beat is scored by cosine similarity plus a bass-root bonus. An HMM with Viterbi decoding then smooths the sequence.
-6. **Key.** Krumhansl–Kessler profile correlation, refined by how much of the song is diatonic and on the tonic chord (this separates G major from E minor). A second chord pass adds a small preference for chords in the key.
-7. **Bars.** Each possible downbeat phase is scored by how many chord changes land on it. Bars follow from the winner.
-8. **Lyrics.** YouTube auto-captions carry per-word timestamps. The rolling duplicate lines are removed, and each chord change goes over the word being sung at that moment.
+5. **Chords.** Every candidate chord has a template that includes the harmonic series (partials 1–6). Before matching, each beat's chroma and the templates are sharpened by subtracting part of their mean level; live mixes (voice, reverb, cymbals, crowd) give fairly flat chroma, and this restores the contrast between chords. Each beat is scored by cosine similarity plus a bass-root bonus. An HMM with Viterbi decoding then smooths the sequence.
+6. **No-music detection.** Talking, applause and crowd noise don't line up into any chord, so even the best chord fits poorly. The best fit is averaged over about 8 seconds and compared with the best-fitting part of the same recording; stretches that fall well below it are marked "no chord" and left out of the key estimate. This matters for TV and live videos, where judges, hosts and applause can fill more of the clip than the song does.
+7. **Key.** Krumhansl–Kessler profile correlation, refined by how much of the song is diatonic and on the tonic chord (this separates G major from E minor). A second chord pass adds a small preference for chords in the key.
+8. **Bars.** Each possible downbeat phase is scored by how many chord changes land on it, and bars follow from the winner. This is done separately for each stretch of music between breaks, since every song or section after a break starts on its own downbeat.
+9. **Lyrics.** YouTube auto-captions carry per-word timestamps. The rolling duplicate lines are removed, and each chord change goes over the word being sung at that moment.
 
 ## Accuracy and limits
 
@@ -187,4 +189,4 @@ The tests synthesise songs with known chords (strummed chords, bass, drums, a wa
 npm test
 ```
 
-There are 20 tests covering chord, key, tempo and tuning accuracy on synthetic audio; the live tracker; caption, LRC and VTT parsing; every output format (including the timed HTML sheet); transpose and capo; the browser `AudioBuffer` path; and the full YouTube flow through the CLI, using a yt-dlp test double.
+There are 21 tests covering chord, key, tempo and tuning accuracy on synthetic audio; marking talk and applause between songs as "no chord"; the live tracker; caption, LRC and VTT parsing; every output format (including the timed HTML sheet); transpose and capo; the browser `AudioBuffer` path; and the full YouTube flow through the CLI, using a yt-dlp test double.

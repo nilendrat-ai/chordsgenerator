@@ -119,6 +119,9 @@ details.menu summary::-webkit-details-marker{display:none}
 .c.nc{background:transparent;color:var(--mute);font-weight:600;font-size:13px}
 .c:hover{background:color-mix(in oklab,var(--c) 45%,var(--card))}
 .c.on{background:var(--c);color:var(--cf)}
+.bar.gapbar{min-height:44px;background:transparent;border:1px dashed var(--line)}
+.c.gap{font:500 14px Inter,sans-serif;letter-spacing:0;justify-content:flex-start;padding:0 14px;white-space:normal}
+.c.gap.on{background:var(--soft);color:var(--ink)}
 .empty{display:grid;place-items:center;text-align:center;height:100%;color:var(--mute);padding:24px}
 .empty .big{font:800 26px/1.2 Archivo,sans-serif;color:var(--ink);margin:12px 0 6px}
 .skel{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(520px,80%);margin:18px auto 0}
@@ -336,26 +339,43 @@ details.menu summary::-webkit-details-marker{display:none}
   };
 
   /* ================= chart ================= */
+  const allNoChord = (bar) => bar.beats.every((c) => c.quality === 'N');
+  function barHtml(bar, i, v) {
+    const beat = (bar.end - bar.start) / Math.max(1, bar.beats.length);
+    const parts = [];
+    bar.beats.forEach((ch, j) => {
+      const label = v.name(ch);
+      const last = parts[parts.length - 1];
+      if (last && last.label === label) { last.beats++; last.e = bar.start + (j + 1) * beat; }
+      else parts.push({ label, ch, beats: 1, s: bar.start + j * beat, e: bar.start + (j + 1) * beat });
+    });
+    const inner = parts.map((p) => {
+      const [c, cf] = colour(v.shape(p.ch));
+      const nc = p.ch.quality === 'N';
+      return `<span class="c${nc ? ' nc' : ''}" style="flex:${p.beats};--c:${c};--cf:${cf}" data-s="${p.s.toFixed(2)}" data-e="${p.e.toFixed(2)}" title="${esc(p.label)} at ${formatTime(p.s)}">${esc(nc ? '–' : p.label)}</span>`;
+    }).join('');
+    return `<div class="bar${bar.pickup ? ' pickup' : ''}" data-i="${i}">${inner}</div>`;
+  }
   function chartHtml(bars, v, n) {
     const rows = [];
-    for (let i = 0; i < bars.length; i += n) {
-      const cells = bars.slice(i, i + n).map((bar, k) => {
-        const beat = (bar.end - bar.start) / Math.max(1, bar.beats.length);
-        const parts = [];
-        bar.beats.forEach((ch, j) => {
-          const label = v.name(ch);
-          const last = parts[parts.length - 1];
-          if (last && last.label === label) { last.beats++; last.e = bar.start + (j + 1) * beat; }
-          else parts.push({ label, ch, beats: 1, s: bar.start + j * beat, e: bar.start + (j + 1) * beat });
-        });
-        const inner = parts.map((p) => {
-          const [c, cf] = colour(v.shape(p.ch));
-          const nc = p.ch.quality === 'N';
-          return `<span class="c${nc ? ' nc' : ''}" style="flex:${p.beats};--c:${c};--cf:${cf}" data-s="${p.s.toFixed(2)}" data-e="${p.e.toFixed(2)}" title="${esc(p.label)} at ${formatTime(p.s)}">${esc(nc ? '–' : p.label)}</span>`;
-        }).join('');
-        return `<div class="bar${bar.pickup ? ' pickup' : ''}" data-i="${i + k}">${inner}</div>`;
-      }).join('');
-      rows.push(`<div class="line"><time>${formatTime(bars[i].start)}</time><div class="bars" style="--n:${n}">${cells}</div></div>`);
+    let i = 0;
+    while (i < bars.length) {
+      // Two or more bars with no chords (talking, applause, a break) fold into one row.
+      let k = i;
+      while (k < bars.length && allNoChord(bars[k])) k++;
+      if (k - i >= 2) {
+        const s = bars[i].start, e = bars[k - 1].end;
+        rows.push(`<div class="line"><time>${formatTime(s)}</time><div class="bars" style="--n:1"><div class="bar gapbar" data-i="${i}"><span class="c nc gap" style="--c:var(--line);--cf:var(--ink)" data-s="${s.toFixed(2)}" data-e="${e.toFixed(2)}" title="Jump to ${formatTime(s)}">No music for ${formatTime(e - s)} (talking, applause or a break)</span></div></div></div>`);
+        i = k;
+        continue;
+      }
+      const start = i;
+      const cells = [];
+      while (i < bars.length && cells.length < n && !(allNoChord(bars[i]) && i + 1 < bars.length && allNoChord(bars[i + 1]))) {
+        cells.push(barHtml(bars[i], i, v));
+        i++;
+      }
+      rows.push(`<div class="line"><time>${formatTime(bars[start].start)}</time><div class="bars" style="--n:${n}">${cells.join('')}</div></div>`);
     }
     return rows.join('');
   }
