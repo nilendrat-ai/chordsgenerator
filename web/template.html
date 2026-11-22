@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YouTube Chord Sheet</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+/* VOICE  everyday tool for musicians: confident, uncluttered
+   IDEA   a music stand: the video and the chord you're on, with the printed chart beside it
+   PICTURE the live chord, huge, over a coloured chord timeline with a playhead
+   COLOUR white paper, black ink, vermilion for listening and the playhead; each chord root has its own hue
+   TYPE   Archivo 800 for chords and titles, Inter for UI, JetBrains Mono for the sheet
+   LAYOUT laptop: URL bar across the top, stand left, sheet right; phone: stacked */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#111214);--ink:light-dark(#111,#f1f1ee);--mute:light-dark(#5f5f5a,#a3a39c);--panel:light-dark(#f2f2ef,#1b1c1f);--line:light-dark(#dcdcd6,#2c2d31);--acc:#ff4a1c;--err:light-dark(#c4260a,#ff7a5c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1240px;margin:0 auto;padding:0 max(4vw,16px)}
+header{padding:28px 0 16px;border-bottom:1px solid var(--line)}
+h1{font:800 clamp(30px,4vw,44px)/1.05 Archivo,system-ui,sans-serif;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--mute);margin:0 0 18px;max-width:66ch}
+form.url{display:flex;gap:10px;flex-wrap:wrap}
+form.url input{flex:1 1 320px;font:16px Inter,sans-serif;padding:14px 16px;border:2px solid var(--ink);border-radius:10px;background:var(--bg);color:var(--ink)}
+button,select,.btn{font:500 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.go{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600;padding:0 22px}
+button:hover,.btn:hover{border-color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,.btn:focus-within{outline:3px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.5;cursor:progress}
+.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:12px;color:var(--mute);font-size:15px}
+.row label{display:flex;gap:8px;align-items:center}
+.linkish{background:none;border:0;padding:0;min-height:44px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;font:inherit;cursor:pointer}
+.btn input,.linkish input{display:none}
+.row label.linkish{display:inline-flex}
+#status{min-height:28px;margin-top:8px;font-size:15px}
+#status.err{color:var(--err)}
+.steps{display:inline-flex;flex-wrap:wrap;gap:6px}
+.steps span{padding:3px 10px;border-radius:99px;background:var(--panel);color:var(--mute)}
+.steps span.on{background:var(--ink);color:var(--bg)}
+.steps span.done{color:var(--ink)}
+main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;padding:24px 0 48px}
+.stand{display:grid;gap:14px;align-content:start}
+@media(min-width:900px){.stand{position:sticky;top:12px}}
+.screen{aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;position:relative}
+.screen.audio{aspect-ratio:auto;height:84px}
+.screen iframe,.screen #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
+.screen .art{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:800 clamp(20px,2.6vw,28px)/1.15 Archivo,sans-serif;text-align:center;padding:20px;background:linear-gradient(135deg,#1d1d22,#3a1a12)}
+audio{width:100%}
+.listen{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button.rec{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:10px;padding:0 20px}
+button.rec i{width:10px;height:10px;border-radius:50%;background:#fff}
+.listening button.rec i{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){.listening button.rec i{animation:none}}
+.hint{flex-basis:100%;font-size:14px;color:var(--mute);margin:0}
+.now{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 22px;align-items:end;padding:18px 20px;border-radius:12px;background:var(--panel)}
+.listening .now{box-shadow:inset 0 0 0 2px var(--acc)}
+.now .chord{font:800 clamp(56px,9vw,96px)/.9 Archivo,sans-serif;letter-spacing:-.03em;grid-row:span 2;min-width:2.2ch}
+.now .next{font-size:15px;color:var(--mute)}
+.now .next b{font:800 26px Archivo,sans-serif;color:var(--ink);margin-right:6px}
+.now .lyric{font-size:17px;font-weight:500;min-height:1.6em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.tl{position:relative;height:54px;border-radius:8px;overflow:hidden;background:var(--panel);cursor:pointer}
+.tl div{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:700 13px Inter,sans-serif;overflow:hidden;white-space:nowrap;box-shadow:inset -1px 0 0 var(--bg)}
+.tl .head{position:absolute;top:0;bottom:0;width:3px;background:var(--acc);box-shadow:0 0 0 1px var(--bg);pointer-events:none;left:0;z-index:1}
+.tlx{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--mute);margin-top:-8px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:baseline}
+.facts h2{font:800 clamp(24px,3vw,32px)/1.1 Archivo,sans-serif;margin:0;letter-spacing:-.02em;flex-basis:100%}
+.facts .by{flex-basis:100%;color:var(--mute);margin-top:-6px}
+.facts dl{display:flex;flex-wrap:wrap;gap:4px 22px;margin:0}
+.facts dt{font-size:13px;color:var(--mute)}
+.facts dd{margin:0;font-weight:600;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.chips span{font:700 15px Inter,sans-serif;padding:6px 12px;border-radius:8px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.tools label,.tools .lab{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--mute)}
+.stepper{display:flex;align-items:center}
+.stepper button{width:44px;padding:0}
+.stepper output{min-width:3.4ch;text-align:center;font-weight:600;color:var(--ink);white-space:nowrap}
+.lyr{border-bottom:1px solid var(--line)}
+.lyr #lyrInfo{flex-basis:100%;font-size:14px;color:var(--mute);margin:0}
+details{flex-basis:100%}
+summary{cursor:pointer;min-height:32px;color:var(--ink);font-size:15px}
+textarea{width:100%;min-height:120px;font:14px/1.4 "JetBrains Mono",ui-monospace,monospace;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin:8px 0}
+.note{font-size:15px;color:var(--mute);margin:10px 0 0}
+pre{overflow-x:auto;font:14px/1.45 "JetBrains Mono",ui-monospace,monospace;margin:14px 0 0;padding:18px;border-radius:12px;border:1px solid var(--line);min-height:300px;white-space:pre}
+.small{font-size:13px;color:var(--mute)}
+@media(max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.now{grid-template-columns:minmax(0,1fr)}.now .chord{grid-row:auto}pre{font-size:13px;padding:12px}}
+@media(prefers-reduced-motion:no-preference){.bar i{transition:width .1s linear}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Chord sheet from a YouTube video</h1>
+    <p class="lede">Runs entirely in your browser, with no server or upload. Load a video, press Listen and play it. The chords show up live as it plays, and the full sheet is built when it ends.</p>
+    <form class="url" id="urlForm">
+      <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube video URL" required>
+      <button class="go" id="go" type="submit">Load video</button>
+    </form>
+    <div class="row">
+      <label>Chords <select id="vocab"><option value="majmin">Major / minor</option><option value="sevenths">+ sevenths</option><option value="full">Everything (sus, dim, aug)</option></select></label>
+      <span>No link handy? <button type="button" class="linkish" id="demo">Play the demo song</button> or <label class="linkish">open an audio file<input type="file" id="file" accept="audio/*,video/*"></label></span>
+    </div>
+    <div id="status" aria-live="polite"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <main id="main">
+    <section class="stand" id="stand" aria-label="Player">
+      <div class="screen audio" id="screen"><div class="art" id="art">Loading…</div><div id="yt" hidden></div></div>
+      <audio id="audio" controls hidden></audio>
+      <div class="listen">
+        <button type="button" class="rec" id="listen"><i></i><span id="listenLabel">Listen &amp; get chords</span></button>
+        <button type="button" id="stop" hidden>Stop &amp; build sheet</button>
+        <button type="button" class="linkish" id="other">Listen to another tab instead</button>
+        <p class="hint" id="hint">In the share dialog, choose <b>This tab</b> and keep <b>Also share tab audio</b> switched on. Then play the video. Works in desktop Chrome and Edge.</p>
+      </div>
+      <div class="now">
+        <div class="chord" id="nowChord">–</div>
+        <div class="next" id="next">Press play</div>
+        <div class="lyric" id="lyric"></div>
+        <div class="bar"><i id="barFill"></i></div>
+      </div>
+      <div class="tl" id="tl" role="slider" aria-label="Song position" aria-valuemin="0" tabindex="0"><span class="head" id="head"></span></div>
+      <div class="tlx"><span id="t0">0:00</span><span class="small" id="tlHint">Click the strip to jump</span><span id="t1">0:00</span></div>
+    </section>
+
+    <section aria-label="Chord sheet">
+      <div class="facts" id="facts"></div>
+      <div class="chips" id="chips"></div>
+      <div class="tools">
+        <span class="lab">Transpose <span class="stepper"><button type="button" id="down" aria-label="Down a semitone">−</button><output id="tr">0</output><button type="button" id="up" aria-label="Up a semitone">+</button></span></span>
+        <label>Capo <select id="capo"><option value="none">None</option><option value="auto">Easiest</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></label>
+        <label><input type="checkbox" id="simplify"> Simplify</label>
+        <select id="format" aria-label="Sheet format"><option value="text">Text</option><option value="chordpro">ChordPro</option><option value="markdown">Markdown</option><option value="json">JSON</option></select>
+        <button type="button" id="copy">Copy</button>
+        <button type="button" id="save">Download</button>
+      </div>
+      <div class="tools lyr">
+        <span class="lab">Lyrics</span>
+        <button type="button" id="findLyr">Find synced lyrics</button>
+        <span class="lab">Timing <span class="stepper"><button type="button" id="lyrEarly" aria-label="Lyrics earlier">−</button><output id="lyrOff">0.0s</output><button type="button" id="lyrLate" aria-label="Lyrics later">+</button></span></span>
+        <button type="button" id="lyrClear">Remove</button>
+        <p id="lyrInfo">No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.</p>
+        <details id="lyrBox"><summary>Paste or open lyrics (.lrc or .vtt)</summary>
+          <textarea id="lyrText" placeholder="[00:12.50] First line of the song&#10;[00:16.80] Second line"></textarea>
+          <div class="listen"><button type="button" id="lyrApply">Use these lyrics</button><label class="btn">Open file…<input type="file" id="lyrFile" accept=".lrc,.vtt,.txt"></label></div>
+        </details>
+      </div>
+      <p class="note" id="capoNote"></p>
+      <pre id="sheet"></pre>
+    </section>
+  </main>
+</div>
+
+<script id="lib">/*__LIBRARY__*/</script>
+<script>
+{
+  const { renderSheet, parseLyrics, parseLrc, suggestCapo, formatTime, theory, makeDemoSong, wavBlob } = YTChords;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ================= analysis engine: a Web Worker built from the inlined library ================= */
+  const WORKER = `
+    let live = null, chunks = [], total = 0, timer = null;
+    const post = (m, t) => self.postMessage(m, t || []);
+    function run(samples, sampleRate, options) {
+      const analysis = YTChords.analyzeAudio(samples, sampleRate, Object.assign({}, options, { onProgress: (p) => post({ type: 'progress', stage: p.stage }) }));
+      post({ type: 'result', analysis });
+    }
+    self.onmessage = (e) => {
+      const m = e.data;
+      try {
+        if (m.type === 'start') {
+          live = YTChords.createLiveTracker({ sampleRate: m.sampleRate, vocabulary: m.vocabulary });
+          chunks = []; total = 0; clearInterval(timer);
+          timer = setInterval(() => { const r = live && live.update(); if (r) post(Object.assign({ type: 'live' }, r)); }, 250);
+        } else if (m.type === 'chunk') {
+          if (live) live.push(m.data);
+          if (m.record) { chunks.push(m.data); total += m.data.length; }
+        } else if (m.type === 'finish' || m.type === 'cancel') {
+          clearInterval(timer); live = null;
+          const x = new Float32Array(m.type === 'finish' ? total : 0);
+          let o = 0; for (const c of chunks) { if (o + c.length <= x.length) x.set(c, o); o += c.length; }
+          chunks = []; total = 0;
+          if (m.type === 'finish') run(x, m.sampleRate, m.options);
+        } else if (m.type === 'analyze') run(m.samples, m.sampleRate, m.options);
+      } catch (err) { post({ type: 'error', message: err.message }); }
+    };`;
+  let engine;
+  try {
+    const url = URL.createObjectURL(new Blob([$('lib').textContent, '\n', WORKER], { type: 'text/javascript' }));
+    const w = new Worker(url);
+    engine = { send: (m, t) => w.postMessage(m, t || []), set onmessage(fn) { w.onmessage = fn; } };
+  } catch {
+    // No workers (very old browser or locked-down page): run the same code on the main thread.
+    const fake = { postMessage: (m) => setTimeout(() => fake.handler?.({ data: m })) };
+    new Function('self', 'YTChords', WORKER)(fake, YTChords);
+    engine = { send: (m) => setTimeout(() => fake.onmessage({ data: m })), set onmessage(fn) { fake.handler = fn; } };
+  }
+
+  /* ================= state ================= */
+  const S = { analysis: null, lyricsRaw: null, lyricOffset: 0, meta: {}, source: null, transpose: 0, sheet: '', videoId: null };
+  let job = null; // what the engine is analysing right now
+  let cap = null; // active capture session
+  let liveSegs = [];
+  let lastLive = null;
+  let yt = null, ytApi = null, ytBroken = false;
+  let lastSeg = -1;
+
+  const STAGES = [['chroma', 'Harmony'], ['beats', 'Beats'], ['chords', 'Chords']];
+  const status = (html, err = false) => { $('status').innerHTML = html; $('status').className = err ? 'err' : ''; };
+  const steps = (stage) => {
+    const at = STAGES.findIndex(([k]) => k === stage);
+    return `Building the sheet <span class="steps">${STAGES.map(([, l], i) => `<span class="${i < at ? 'done' : i === at ? 'on' : ''}">${i < at ? '✓ ' : ''}${l}</span>`).join('')}</span>`;
+  };
+
+  /* ================= chord naming (mirrors renderSheet so the stand and sheet agree) ================= */
+  function view() {
+    const a = S.analysis;
+    const simplify = $('simplify').checked;
+    const prep = (c) => (simplify ? theory.simplifyChord(c) : c);
+    const segs = a ? a.segments : [];
+    const sounding = segs.map((s) => ({ ...s, chord: theory.transposeChord(prep(s.chord), S.transpose) }));
+    const suggested = suggestCapo(sounding).capo;
+    const cv = $('capo').value;
+    const capo = cv === 'auto' ? suggested : cv === 'none' ? 0 : +cv;
+    const shift = S.transpose - capo;
+    const flats = a ? theory.keyPrefersFlats(theory.transposeKey(a.key, shift)) : false;
+    const shape = (c) => theory.transposeChord(prep(c), shift);
+    return { capo, suggested, shape, name: (c) => theory.chordName(shape(c), flats) };
+  }
+  const colour = (ch) => {
+    if (!ch || ch.quality === 'N') return ['var(--line)', 'var(--mute)'];
+    const minor = ['min', 'min7', 'dim'].includes(ch.quality);
+    return [`oklch(${minor ? 0.6 : 0.8} 0.14 ${(ch.root * 30 + 25) % 360})`, minor ? '#fff' : '#111'];
+  };
+  const lyrics = () => (S.lyricsRaw ? S.lyricsRaw.map((l) => ({ ...l, start: l.start + S.lyricOffset, end: l.end + S.lyricOffset, words: l.words.map((w) => ({ ...w, start: w.start + S.lyricOffset })) })) : null);
+
+  function drawTimeline(segs, dur, name, shape) {
+    $('tl').innerHTML = segs.map((s) => {
+      const [bg, fg] = colour(shape(s.chord));
+      const left = (s.start / dur) * 100;
+      const w = (Math.max(0, s.end - s.start) / dur) * 100;
+      return `<div style="left:${left}%;width:${w}%;background:${bg};color:${fg}" title="${esc(name(s.chord))} at ${formatTime(s.start)}">${w > 2.6 ? esc(name(s.chord)) : ''}</div>`;
+    }).join('') + '<span class="head" id="head"></span>';
+    $('t1').textContent = formatTime(dur);
+    $('tl').setAttribute('aria-valuemax', Math.round(dur));
+  }
+
+  /* ================= render ================= */
+  function render() {
+    const a = S.analysis;
+    $('tr').textContent = (S.transpose > 0 ? '+' : '') + S.transpose;
+    $('lyrOff').textContent = `${S.lyricOffset > 0 ? '+' : ''}${S.lyricOffset.toFixed(1)}s`;
+    const title = S.meta.title || (S.source ? 'Untitled' : '');
+    const by = S.meta.artist ? `<div class="by">${esc(S.meta.artist)}</div>` : '';
+    if (!a) {
+      $('facts').innerHTML = title ? `<h2>${esc(title)}</h2>${by}` : '';
+      $('chips').innerHTML = '';
+      $('capoNote').textContent = '';
+      $('sheet').textContent = S.source === 'external'
+        ? 'Listening to another tab.\nPlay the song there, then press “Stop & build sheet”.'
+        : S.source === 'youtube'
+        ? '1. Press “Listen & get chords”.\n2. In the share dialog choose This tab and keep\n   “Also share tab audio” switched on.\n3. Play the video. Chords appear live, and the full\n   sheet is built here when the video ends or you\n   press Stop.\n\nTip: listen to the whole song for the best result.'
+        : 'Load a YouTube video, play the demo song, or open an audio file.';
+      S.sheet = '';
+      return;
+    }
+    const v = view();
+    S.sheet = renderSheet(a, {
+      format: $('format').value, lyrics: lyrics(), title: title || 'Untitled', artist: S.meta.artist, source: S.meta.url,
+      transpose: S.transpose, capo: $('capo').value === 'none' ? 'none' : $('capo').value === 'auto' ? 'auto' : +$('capo').value,
+      simplify: $('simplify').checked,
+    });
+    $('sheet').textContent = S.sheet;
+
+    const key = theory.keyName(theory.transposeKey(a.key, S.transpose));
+    const hz = 440 * Math.pow(2, a.tuningCents / 1200);
+    const facts = [['Key', key], ['Tempo', a.tempo ? `${Math.round(a.tempo)} BPM` : 'free'], ['Time', `${a.beatsPerBar}/4`], ['Length', formatTime(a.duration)]];
+    if (Math.abs(hz - 440) >= 1.5) facts.push(['Tuning', `A = ${hz.toFixed(0)} Hz`]);
+    $('facts').innerHTML = `<h2>${esc(title)}</h2>${by}<dl>${facts.map(([k, x]) => `<div><dt>${k}</dt><dd>${esc(x)}</dd></div>`).join('')}</dl>`;
+
+    const seen = new Map();
+    for (const s of a.segments) if (s.chord.quality !== 'N' && !seen.has(v.name(s.chord))) seen.set(v.name(s.chord), v.shape(s.chord));
+    $('chips').innerHTML = [...seen].map(([n, c]) => { const [bg, fg] = colour(c); return `<span style="background:${bg};color:${fg}">${esc(n)}</span>`; }).join('');
+    $('capoNote').textContent = v.capo > 0
+      ? `Capo ${v.capo}: chords are shown as the shapes you play, sounding in ${key}.`
+      : v.suggested > 0 ? `Tip: capo ${v.suggested} turns these into easier open shapes. Pick “Easiest”.` : '';
+    drawTimeline(a.segments, Math.max(a.duration, ...a.segments.map((s) => s.end)), v.name, v.shape);
+    $('tlHint').textContent = S.source === 'external' ? 'Recorded from another tab' : 'Click the strip to jump';
+    lastSeg = -1;
+    tick(true);
+  }
+
+  /* ================= playback sync ================= */
+  const now = () => {
+    if (S.source === 'youtube') return yt?.getCurrentTime?.() ?? 0;
+    if (S.source === 'audio') return $('audio').currentTime || 0;
+    return cap ? cap.total / cap.sr : 0;
+  };
+  function seek(t) {
+    if (S.source === 'youtube') yt?.seekTo?.(t, true);
+    else if (S.source === 'audio') $('audio').currentTime = t;
+    tick(true);
+  }
+  function tick(force) {
+    const t = now();
+    const line = lyrics()?.find((l) => t >= l.start - 0.3 && t < l.end);
+    $('lyric').textContent = line ? line.text : '';
+    if (cap) return; // the live view drives the panel while listening
+    const a = S.analysis;
+    if (!a) return;
+    const segs = a.segments;
+    const dur = Math.max(a.duration, ...segs.map((s) => s.end));
+    let i = segs.findIndex((s) => t >= s.start && t < s.end);
+    if (i < 0) i = t < (segs[0]?.start ?? 0) ? -1 : segs.length - 1;
+    $('head').style.left = `${Math.min(100, (t / dur) * 100)}%`;
+    $('t0').textContent = formatTime(t);
+    const cur = segs[i];
+    $('barFill').style.width = cur ? `${Math.min(100, ((t - cur.start) / (cur.end - cur.start)) * 100)}%` : '0%';
+    if (i === lastSeg && !force) return;
+    lastSeg = i;
+    const v = view();
+    $('nowChord').textContent = cur ? v.name(cur.chord) : '–';
+    $('nowChord').style.color = cur && cur.chord.quality !== 'N' ? colour(v.shape(cur.chord))[0] : 'var(--mute)';
+    const nx = segs.slice(i + 1).find((s) => s.chord.quality !== 'N');
+    $('next').innerHTML = S.source === 'external' ? 'Recorded from another tab, so there’s no playback sync' : nx ? `Next <b>${esc(v.name(nx.chord))}</b> at ${formatTime(nx.start)}` : 'End of song';
+  }
+  setInterval(() => tick(false), 80);
+  $('tl').addEventListener('click', (e) => {
+    if (!S.analysis || cap) return;
+    const r = $('tl').getBoundingClientRect();
+    seek(((e.clientX - r.left) / r.width) * Math.max(S.analysis.duration, ...S.analysis.segments.map((s) => s.end)));
+  });
+  $('tl').addEventListener('keydown', (e) => {
+    if (!S.analysis || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    seek(Math.max(0, now() + (e.key === 'ArrowRight' ? 5 : -5)));
+  });
+
+  /* ================= sources ================= */
+  function setSource(source, meta) {
+    if (cap) stopListening(true);
+    Object.assign(S, { source, meta: meta || {}, analysis: null, transpose: 0 });
+    $('capo').value = 'none';
+    liveSegs = [];
+    $('tl').innerHTML = '<span class="head" id="head"></span>';
+    $('nowChord').textContent = '–';
+    $('nowChord').style.color = 'var(--mute)';
+    $('next').textContent = source === 'youtube' ? 'Press Listen, then play' : 'Press play';
+    $('barFill').style.width = '0%';
+    $('t0').textContent = $('t1').textContent = '0:00';
+    $('screen').classList.toggle('audio', source !== 'youtube');
+    $('hint').hidden = source !== 'youtube';
+    $('listen').hidden = source === 'audio';
+    render();
+  }
+
+  const videoId = (s) => (/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/.exec(s) || /^([\w-]{11})$/.exec(s.trim()) || [])[1] || null;
+  function loadYouTubeApi() {
+    ytApi ??= new Promise((resolve, reject) => {
+      if (window.YT?.Player) return resolve();
+      window.onYouTubeIframeAPIReady = resolve;
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.onerror = () => { ytApi = null; reject(new Error('The YouTube player couldn’t load. Are you offline?')); };
+      document.head.append(s);
+    });
+    return ytApi;
+  }
+  const YT_ERRORS = { 2: 'that video id is invalid', 5: 'the player hit an HTML5 error', 100: 'the video is private or removed', 101: 'the owner doesn’t allow embedding', 150: 'the owner doesn’t allow embedding', 153: 'YouTube refused to embed it on this page' };
+  async function showYouTube(id) {
+    $('audio').pause();
+    $('audio').hidden = true;
+    ytBroken = false;
+    setSource('youtube', { url: `https://www.youtube.com/watch?v=${id}` });
+    S.videoId = id;
+    $('art').hidden = true;
+    $('yt').hidden = false;
+    try {
+      await loadYouTubeApi();
+      if (yt?.cueVideoById) yt.cueVideoById(id);
+      else yt = new YT.Player('yt', {
+        videoId: id, playerVars: { playsinline: 1, rel: 0 },
+        events: { onReady: onYtMeta, onStateChange: onYtState, onError: onYtError },
+      });
+    } catch (err) {
+      $('art').hidden = false;
+      $('art').textContent = err.message;
+      ytBroken = true;
+    }
+  }
+  function onYtMeta() {
+    const d = yt?.getVideoData?.();
+    if (!d?.title || S.source !== 'youtube') return;
+    S.meta.title = d.title;
+    S.meta.artist = d.author;
+    render();
+    if (!S.lyricsRaw) findLyrics(true);
+  }
+  function onYtState(e) {
+    if (e.data === 1 || e.data === 5) onYtMeta();
+    if (e.data === 0 && cap?.mode === 'embed') stopListening();
+  }
+  function onYtError(e) {
+    ytBroken = true;
+    const why = YT_ERRORS[e.data] || `error ${e.data}`;
+    const tip = location.protocol === 'file:' ? ' YouTube often blocks players on pages opened straight from disk, so host this file anywhere (even GitHub Pages) and it will work.' : '';
+    status(`This video can’t play here (${why}).${tip} You can still open it on youtube.com and use “Listen to another tab instead”.`, true);
+  }
+
+  /* ================= listening (tab-audio capture) ================= */
+  const TAP = `class Tap extends AudioWorkletProcessor{constructor(){super();this.b=new Float32Array(4096);this.n=0}
+    process(inputs){const inp=inputs[0];if(inp&&inp.length){const len=inp[0].length,c=inp.length;for(let i=0;i<len;i++){let s=0;for(let k=0;k<c;k++)s+=inp[k][i];this.b[this.n++]=s/c;if(this.n===4096){this.port.postMessage(this.b,[this.b.buffer]);this.b=new Float32Array(4096);this.n=0}}}return true}}
+    registerProcessor('tap',Tap);`;
+  const rms = (x) => { let s = 0; for (let i = 0; i < x.length; i += 4) s += x[i] * x[i]; return Math.sqrt(s / (x.length / 4)); };
+
+  async function startListening({ otherTab = false, stream = null } = {}) {
+    if (cap) return;
+    try {
+      if (!stream) {
+        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('This browser can’t share tab audio. Use Chrome or Edge on a computer, or open an audio file instead.');
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false },
+          preferCurrentTab: !otherTab && S.source === 'youtube',
+          selfBrowserSurface: 'include', systemAudio: 'include', surfaceSwitching: 'exclude',
+        });
+      }
+      const tracks = stream.getAudioTracks();
+      if (!tracks.length) {
+        stream.getTracks().forEach((t) => t.stop());
+        throw new Error('No audio was shared. Try again and keep “Also share tab audio” switched on (Firefox and Safari can’t share tab audio).');
+      }
+      stream.getVideoTracks().forEach((t) => t.stop());
+      const ctx = new AudioContext();
+      let node;
+      try {
+        await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP], { type: 'text/javascript' })));
+        node = new AudioWorkletNode(ctx, 'tap');
+        node.port.onmessage = (e) => onChunk(e.data);
+      } catch {
+        // Pages opened from disk (file://) can't load worklet modules; the older node works everywhere.
+        node = ctx.createScriptProcessor(4096, 2, 1);
+        node.onaudioprocess = (e) => {
+          const ib = e.inputBuffer;
+          const x = new Float32Array(ib.length);
+          for (let k = 0; k < ib.numberOfChannels; k++) {
+            const d = ib.getChannelData(k);
+            for (let i = 0; i < d.length; i++) x[i] += d[i] / ib.numberOfChannels;
+          }
+          onChunk(x);
+        };
+      }
+      const src = ctx.createMediaStreamSource(new MediaStream(tracks));
+      const mute = ctx.createGain();
+      mute.gain.value = 0;
+      src.connect(node);
+      node.connect(mute).connect(ctx.destination);
+      const embed = !otherTab && S.source === 'youtube' && !ytBroken;
+      if (!embed && S.source !== 'external') {
+        S.lyricsRaw = null;
+        $('lyrInfo').textContent = 'Recording another tab. Paste lyrics below if you want them on the sheet.';
+        setSource('external', { title: 'Audio from another tab' });
+      }
+      cap = { ctx, stream, sr: ctx.sampleRate, total: 0, runs: [], recording: false, mode: embed ? 'embed' : 'external', idleLoud: 0 };
+      liveSegs = [];
+      lastLive = null;
+      tracks[0].addEventListener('ended', () => stopListening());
+      engine.send({ type: 'start', sampleRate: ctx.sampleRate, vocabulary: $('vocab').value });
+      document.body.classList.add('listening');
+      $('listenLabel').textContent = 'Listening…';
+      $('stop').hidden = false;
+      $('other').hidden = true;
+      $('next').textContent = embed ? 'Play the video' : 'Play the song in the other tab';
+      status(embed ? 'Listening. Play the video, and the sheet is built when it ends.' : 'Listening to the other tab. Press Stop when the song is over.');
+      if (embed && yt?.getPlayerState?.() !== 1) yt?.playVideo?.();
+    } catch (err) {
+      status(err.name === 'NotAllowedError' ? 'Sharing was cancelled.' : esc(err.message), err.name !== 'NotAllowedError');
+    }
+  }
+
+  function onChunk(x) {
+    if (!cap) return;
+    let record = true;
+    let vt = null;
+    if (cap.mode === 'embed') {
+      const playing = yt?.getPlayerState?.() === 1;
+      if (playing) vt = yt.getCurrentTime();
+      else {
+        // Loud audio while our player is idle means the person shared another tab.
+        if (!cap.runs.length && rms(x) > 0.01 && (cap.idleLoud += x.length / cap.sr) > 3) {
+          cap.mode = 'external';
+          setSourceKeepCapture();
+          status('Hearing audio from another tab, so recording that instead (no video sync).');
+        }
+        record = cap.mode === 'external';
+      }
+    }
+    if (record && !cap.recording) cap.runs.push({ at: cap.total, videoTime: vt == null ? null : Math.max(0, vt - x.length / cap.sr) });
+    cap.recording = record;
+    if (record) cap.total += x.length;
+    engine.send({ type: 'chunk', data: x, record }, [x.buffer]);
+  }
+  function setSourceKeepCapture() {
+    S.source = 'external';
+    S.meta = { title: 'Audio from another tab' };
+    render();
+  }
+
+  function onLive(r) {
+    if (!cap) return;
+    const t = cap.mode === 'embed' ? (yt?.getCurrentTime?.() ?? 0) : cap.total / cap.sr;
+    const sec = cap.total / cap.sr;
+    $('t0').textContent = formatTime(t);
+    $('next').textContent = cap.recording ? `Recording · ${formatTime(sec)} so far${r.key ? ` · sounds like ${r.key.name}` : ''}` : (cap.total ? 'Paused, so press play to carry on' : 'Waiting for the video to play…');
+    if (!cap.recording) return;
+    const shape = (c) => c;
+    const flats = r.key ? theory.keyPrefersFlats(r.key) : false;
+    const name = (c) => theory.chordName(c, flats);
+    $('nowChord').textContent = r.silent ? '–' : r.name;
+    $('nowChord').style.color = r.silent || r.chord.quality === 'N' ? 'var(--mute)' : colour(r.chord)[0];
+    $('barFill').style.width = `${Math.round(r.confidence * 100)}%`;
+    const last = liveSegs[liveSegs.length - 1];
+    if (last && last.name === r.name && Math.abs(t - last.end) < 2) last.end = t;
+    else liveSegs.push({ start: last && Math.abs(t - last.end) < 2 ? last.end : t, end: t, chord: r.chord, name: r.name });
+    const dur = Math.max(t + 1, cap.mode === 'embed' ? yt?.getDuration?.() || 0 : 0);
+    drawTimeline(liveSegs, dur, name, shape);
+    $('head').style.left = `${(t / dur) * 100}%`;
+  }
+
+  function stopListening(cancel = false) {
+    if (!cap) return;
+    const c = cap;
+    cap = null;
+    try { c.ctx.close(); } catch {}
+    c.stream.getTracks().forEach((t) => t.stop());
+    document.body.classList.remove('listening');
+    $('listenLabel').textContent = 'Listen & get chords';
+    $('stop').hidden = true;
+    $('other').hidden = false;
+    if (cancel) return engine.send({ type: 'cancel' });
+    const secs = c.total / c.sr;
+    if (secs < 8) {
+      engine.send({ type: 'cancel' });
+      status(`Only ${secs.toFixed(0)} s of audio was recorded. Listen for at least 10 seconds, and make sure the video is playing.`, true);
+      return;
+    }
+    if (c.mode === 'embed') yt?.pauseVideo?.();
+    job = { kind: 'capture', runs: c.runs, sr: c.sr };
+    status(steps('chroma'));
+    engine.send({ type: 'finish', sampleRate: c.sr, options: { vocabulary: $('vocab').value } });
+  }
+
+  // Map times on the recording's clock back onto the video's clock (handles pauses).
+  function remap(a, runs, sr) {
+    if (!runs.some((r) => r.videoTime != null)) return a;
+    const starts = runs.map((r) => r.at / sr);
+    const f = (t) => {
+      let i = runs.length - 1;
+      while (i > 0 && starts[i] > t + 1e-6) i--;
+      return runs[i].videoTime == null ? t : runs[i].videoTime + (t - starts[i]);
+    };
+    const span = (o) => ({ ...o, start: f(o.start), end: f(o.end - 1e-3) + 1e-3 });
+    const segments = a.segments.map(span);
+    return { ...a, segments, bars: a.bars.map(span), beats: a.beats.map(f), duration: Math.max(...segments.map((s) => s.end)) };
+  }
+
+  engine.onmessage = (e) => {
+    const m = e.data;
+    if (m.type === 'live') return onLive(m);
+    if (m.type === 'progress') return STAGES.some(([k]) => k === m.stage) && status(steps(m.stage));
+    if (m.type === 'error') { job = null; busy(false); return status('Analysis failed: ' + esc(m.message), true); }
+    if (m.type !== 'result' || !job) return;
+    const j = job;
+    job = null;
+    busy(false);
+    S.analysis = j.kind === 'capture' ? remap(m.analysis, j.runs, j.sr) : m.analysis;
+    lastSeg = -1;
+    render();
+    const a = S.analysis;
+    status(`Done: ${a.segments.filter((s) => s.chord.quality !== 'N').length} chord changes in ${a.key.name}${a.tempo ? ` at ${Math.round(a.tempo)} BPM` : ''}.${S.lyricsRaw ? '' : ' Add lyrics below to see chords over the words.'}`);
+    if (!S.lyricsRaw && S.meta.title && S.source !== 'external') findLyrics(true);
+  };
+
+  /* ================= other inputs ================= */
+  const busy = (b) => { for (const id of ['demo', 'listen']) $(id).disabled = b; };
+
+  $('urlForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = videoId($('url').value);
+    if (!id) return status('That doesn’t look like a YouTube video link. Try youtube.com/watch?v=… or youtu.be/…', true);
+    S.lyricsRaw = null;
+    S.lyricOffset = 0;
+    $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
+    showYouTube(id);
+    status('Video loaded. Press “Listen & get chords”.');
+    try { history.replaceState(null, '', '#' + id); } catch {}
+  });
+  $('listen').addEventListener('click', () => startListening());
+  $('other').addEventListener('click', () => startListening({ otherTab: true }));
+  $('stop').addEventListener('click', () => stopListening());
+
+  function analyseSamples(samples, sampleRate, meta) {
+    busy(true);
+    job = { kind: 'file' };
+    status(steps('chroma'));
+    engine.send({ type: 'analyze', samples, sampleRate, options: { vocabulary: $('vocab').value } }, [samples.buffer]);
+  }
+  function useAudio(blob, label, meta) {
+    yt?.pauseVideo?.();
+    document.querySelector('#screen iframe')?.setAttribute('hidden', '');
+    setSource('audio', meta);
+    $('art').hidden = false;
+    $('art').textContent = label;
+    const audio = $('audio');
+    if (audio.src) URL.revokeObjectURL(audio.src);
+    audio.src = URL.createObjectURL(blob);
+    audio.hidden = false;
+  }
+  function playDemo() {
+    const song = makeDemoSong();
+    S.lyricsRaw = parseLyrics(song.vtt);
+    S.lyricOffset = 0;
+    $('lyrInfo').textContent = 'Demo lyrics (word-timed captions).';
+    useAudio(wavBlob(song.samples, song.sampleRate), 'Demo song: press play below', { title: song.title, artist: song.artist });
+    analyseSamples(song.samples, song.sampleRate);
+  }
+  $('demo').addEventListener('click', playDemo);
+
+  $('file').addEventListener('change', async () => {
+    const file = $('file').files[0];
+    if (!file) return;
+    status(`Decoding ${esc(file.name)}…`);
+    try {
+      const ctx = new AudioContext();
+      const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+      ctx.close();
+      const mono = new Float32Array(buf.length);
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < d.length; i++) mono[i] += d[i] / buf.numberOfChannels;
+      }
+      S.lyricsRaw = null;
+      $('lyrInfo').textContent = 'No lyrics yet. Synced lyrics come from lrclib.net, or you can paste your own.';
+      useAudio(file, file.name, { title: file.name.replace(/\.[^.]+$/, '') });
+      analyseSamples(mono, buf.sampleRate);
+    } catch (err) {
+      status('Couldn’t read that file: ' + esc(err.message), true);
+    } finally {
+      $('file').value = '';
+    }
+  });
+
+  /* ================= lyrics ================= */
+  const cleanTitle = (title = '', author = '') => {
+    let t = title
+      .replace(/\s*[([][^)\]]*(official|video|audio|lyric|visuali[sz]er|hd|4k|remaster|live|mv)[^)\]]*[)\]]/gi, '')
+      .replace(/\s*\|.*$/, '').replace(/\s+(ft\.?|feat\.?)\s.*$/i, '').trim();
+    if (!/ [-–] /.test(t) && author) t = `${author.replace(/\s*-\s*Topic$|VEVO$/i, '')} ${t}`;
+    return t.replace(/ [-–] /, ' ');
+  };
+  async function findLyrics(auto = false) {
+    const q = cleanTitle(S.meta.title, S.meta.artist);
+    if (!q || S.source === 'external') {
+      if (!auto) $('lyrInfo').textContent = 'Load a video first, or paste lyrics below.';
+      return;
+    }
+    $('lyrInfo').textContent = `Searching lrclib.net for “${q}”…`;
+    try {
+      const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const list = (await r.json()).filter((x) => x.syncedLyrics);
+      if (!list.length) {
+        $('lyrInfo').textContent = `No synced lyrics found for “${q}”. Paste or open an .lrc file below.`;
+        return;
+      }
+      const dur = S.analysis?.duration || yt?.getDuration?.() || 0;
+      if (dur) list.sort((a, b) => Math.abs(a.duration - dur) - Math.abs(b.duration - dur));
+      const hit = list[0];
+      S.lyricsRaw = parseLrc(hit.syncedLyrics);
+      S.lyricOffset = 0;
+      $('lyrInfo').textContent = `Using ${hit.artistName} – ${hit.trackName} from lrclib.net. If the words run early or late against the video, nudge the timing.`;
+      render();
+    } catch (err) {
+      $('lyrInfo').textContent = `Couldn’t reach lrclib.net (${err.message}). You can paste or open lyrics below instead.`;
+    }
+  }
+  $('findLyr').addEventListener('click', () => findLyrics(false));
+  const nudge = (d) => { S.lyricOffset = Math.round((S.lyricOffset + d) * 10) / 10; render(); };
+  $('lyrEarly').addEventListener('click', () => nudge(-0.5));
+  $('lyrLate').addEventListener('click', () => nudge(0.5));
+  $('lyrClear').addEventListener('click', () => { S.lyricsRaw = null; $('lyrInfo').textContent = 'Lyrics removed.'; render(); });
+  function useLyricText(text, name = '') {
+    const parsed = parseLyrics(text, name);
+    if (!parsed.length) return ($('lyrInfo').textContent = 'No timed lines found. LRC lines look like [00:12.50] words; VTT has 00:00:12.500 --> … cues.');
+    S.lyricsRaw = parsed;
+    S.lyricOffset = 0;
+    $('lyrInfo').textContent = `Using ${parsed.length} timed lines${name ? ` from ${name}` : ''}.`;
+    $('lyrBox').open = false;
+    render();
+  }
+  $('lyrApply').addEventListener('click', () => useLyricText($('lyrText').value));
+  $('lyrFile').addEventListener('change', async () => {
+    const f = $('lyrFile').files[0];
+    if (f) useLyricText(await f.text(), f.name);
+    $('lyrFile').value = '';
+  });
+
+  /* ================= sheet tools ================= */
+  $('down').addEventListener('click', () => { S.transpose = Math.max(-11, S.transpose - 1); render(); });
+  $('up').addEventListener('click', () => { S.transpose = Math.min(11, S.transpose + 1); render(); });
+  for (const id of ['capo', 'simplify', 'format']) $(id).addEventListener('change', render);
+  $('copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(S.sheet || $('sheet').textContent); $('copy').textContent = 'Copied'; }
+    catch { $('copy').textContent = 'Select the sheet to copy'; }
+    setTimeout(() => ($('copy').textContent = 'Copy'), 1600);
+  });
+  $('save').addEventListener('click', () => {
+    if (!S.sheet) return;
+    const ext = { text: 'txt', chordpro: 'cho', markdown: 'md', json: 'json' }[$('format').value];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([S.sheet], { type: 'text/plain' }));
+    a.download = `${(S.meta.title || 'chords').replace(/[^\w\- ]+/g, '').trim() || 'chords'}.${ext}`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    $('hint').innerHTML = 'This browser can’t share tab audio, so Listen won’t work here. Desktop Chrome or Edge can. You can still open an audio file.';
+  }
+  window.chordSheetApp = { startListening, stopListening }; // handy for scripting and tests
+
+  // Open mid-use: #VIDEO_ID loads that video; otherwise the demo song.
+  const fromHash = location.hash.slice(1);
+  if (/^[\w-]{11}$/.test(fromHash)) {
+    $('url').value = `https://www.youtube.com/watch?v=${fromHash}`;
+    $('urlForm').requestSubmit();
+  } else playDemo();
+}
+</script>
+</body>
+</html>
