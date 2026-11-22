@@ -29,7 +29,8 @@ jobs:
         run: |
           mkdir -p site
           cp dist/chord-sheet.html site/index.html
-          cp dist/chord-sheet.html dist/yt-chord-sheet.esm.js dist/yt-chord-sheet.min.js site/
+          cp dist/chord-sheet.html dist/yt-chord-sheet.esm.js dist/yt-chord-sheet.min.js dist/robots.txt dist/sitemap.xml site/
+          if [ -f dist/og.png ]; then cp dist/og.png site/; fi
       - uses: actions/upload-artifact@v4
         with:
           name: chord-sheet-dist
