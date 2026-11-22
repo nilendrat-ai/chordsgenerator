@@ -108,13 +108,13 @@ The analyser is pure JavaScript with no dependencies. It runs in any modern brow
 
 ### The ready-made page: `dist/chord-sheet.html`
 
-This is a single ~75 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
+This is a single ~85 KB file with the library built in. Nothing runs on a server, and no audio leaves the browser.
 
 - **Live:** every push to `main` runs the tests, builds the page and publishes it to GitHub Pages at `https://nilendrat-ai.github.io/chordsgenerator/` (see `.github/workflows/pages.yml`). This needs **Settings → Pages → Source: GitHub Actions** turned on once.
 - **Download:** each workflow run also attaches the built `dist/` folder as an artifact.
 - **Build it yourself:** run `npm install && npm run build`, then open `dist/chord-sheet.html` or host it anywhere (Netlify, any static folder).
 
-It's a full-screen app. The top bar holds the link box, **Analyse** and **Reset**. The video and live chord analyser sit on the left, and the chord chart fills the rest of the screen.
+It's a full-screen app. The top bar holds the link box, **Analyse**, **Open MP3** and **Reset**. The video and live chord analyser sit on the left, and the chord chart fills the rest of the screen.
 
 1. Paste a YouTube link and press **Analyse**.
 2. The share dialog opens straight away. Choose **This tab** and keep **Also share tab audio** switched on. The page can only hear the video once it's shared. If you just press play, it warns you instead of silently doing nothing.
@@ -128,12 +128,13 @@ Also on the page:
 - **Saved charts:** finished charts are kept in your browser (the last 12 videos) and listed under **Recent** on the start screen, opening instantly with no listening. `https://…/chordsgenerator/#VIDEO_ID` links straight to one. **Clear saved charts** removes them.
 - **Reset:** stops listening and the video, clears the current song, and returns to the start screen.
 - **Listen to another tab instead:** captures any tab (YouTube, Spotify web, SoundCloud…), for videos that block embedding.
+- **Open MP3:** pick an audio file (MP3, M4A, WAV, OGG, FLAC, or the sound of an MP4/WebM video), or drop one anywhere on the page. It's decoded and analysed straight away, with no sharing prompt and no waiting for the song to play, and it works in every modern browser. The file stays on your computer; the first 20 minutes are analysed. Charts from files aren't saved to Recent.
 
 Why does it listen instead of downloading? Browsers aren't allowed to fetch YouTube's audio directly (cross-origin rules), and there's no public CORS-friendly API for it. Tab-audio capture is the only way to get the sound with no server, and it's the same permission video-call apps use.
 
 Requirements and limits:
 
-- **Browsers:** tab-audio sharing works in **desktop Chrome and Edge**. Firefox and Safari can't share tab audio, so the page can't listen there (the library still analyses audio files in any browser).
+- **Browsers:** tab-audio sharing works in **desktop Chrome and Edge**. Firefox and Safari can't share tab audio, so the page can't listen to YouTube there; **Open MP3** works in any browser.
 - **Real-time playback:** the analysis needs the song to play through in real time. A 4-minute song takes 4 minutes to capture, and you can pause.
 - **Embedding:** some videos block it (error 101/150). Use **Listen to another tab instead**. YouTube can also refuse embeds on pages opened straight from disk (`file://`, error 153). Hosting the file anywhere fixes this, and "another tab" always works.
 

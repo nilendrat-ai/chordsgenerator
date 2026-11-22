@@ -52,6 +52,15 @@ form.url input:focus{border-color:var(--ink);background-color:var(--card)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
 .video{aspect-ratio:16/9;border-radius:var(--r);overflow:hidden;background:#000;position:relative;flex:none}
 .video iframe,.video #yt{position:absolute;inset:0;width:100%;height:100%;border:0}
+.ytwrap{position:absolute;inset:0}
+.fileview{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:14px;padding:20px;background:radial-gradient(130% 120% at 15% 0%,#33363d,#0c0d0f);color:#f1f1ee;text-align:center}
+.fileview svg{width:46px;height:46px;opacity:.85}
+.fileview .fname{font:800 clamp(18px,1.7vw,24px)/1.2 Archivo,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fileview audio{width:min(100%,440px)}
+.fileview video{position:absolute;inset:0;width:100%;height:100%;background:#000}
+.alt{margin:22px 0 0;color:var(--mute);font-size:15px;max-width:52ch}
+.alt .link{font-size:15px;padding:0;color:var(--ink);font-weight:600}
+body.drop::after{content:'Drop the audio file to get its chords';position:fixed;inset:12px;border:3px dashed var(--acc);border-radius:20px;background:color-mix(in oklab,var(--bg) 88%,transparent);display:grid;place-items:center;font:800 clamp(20px,3vw,30px) Archivo,sans-serif;z-index:50;pointer-events:none}
 .analyser{padding:16px 18px;display:grid;gap:12px}
 .state{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mute)}
 .listening .state{color:var(--acc)}
@@ -143,9 +152,9 @@ details.menu summary::-webkit-details-marker{display:none}
   .hero{grid-template-columns:minmax(0,1fr)}
   .top{flex-wrap:wrap}
   form.url{flex-basis:100%;order:2}
-  #reset{margin-left:auto}
+  #openFile{margin-left:auto}
 }
-@media(max-width:520px){.btn{padding:0 14px}.line{grid-template-columns:minmax(0,1fr)}.line time{padding:0}}
+@media(max-width:520px){.btn{padding:0 14px}#openFile .lbl{display:none}.line{grid-template-columns:minmax(0,1fr)}.line time{padding:0}}
 @media(prefers-reduced-motion:reduce){.listening .dot,.nudge{animation:none}.chart{scroll-behavior:auto}}
 </style>
 </head>
@@ -159,6 +168,8 @@ details.menu summary::-webkit-details-marker{display:none}
     <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link" aria-label="YouTube video link" required>
     <button class="btn primary" id="go" type="submit">Analyse</button>
   </form>
+  <button class="btn" id="openFile" type="button" title="Get chords from an MP3 or other audio file" aria-label="Open MP3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg><span class="lbl">Open MP3</span></button>
+  <input type="file" id="file" accept="audio/*,video/mp4,video/webm,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac" hidden>
   <button class="btn" id="reset" type="button" title="Stop, clear this video and start over"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
 </header>
 
@@ -173,6 +184,7 @@ details.menu summary::-webkit-details-marker{display:none}
         <li><b>2</b><span>When asked, share <strong>This tab</strong> with <strong>tab audio</strong> on. The video plays from the start.</span></li>
         <li><b>3</b><span>When it ends, your chart is ready and saved for next time.</span></li>
       </ol>
+      <p class="alt">Have the song as a file? <button class="link" id="openFile2" type="button">Open an MP3</button> (or M4A, WAV, OGG, FLAC), or drop it anywhere on this page. There's no sharing step, and the chart is ready in seconds.</p>
     </div>
     <div class="card mock" aria-hidden="true" id="mock"></div>
   </section>
@@ -185,7 +197,7 @@ details.menu summary::-webkit-details-marker{display:none}
 <!-- Workspace -->
 <main class="work" id="work" hidden>
   <section class="left" aria-label="Video and analyser">
-    <div class="video"><div id="yt"></div></div>
+    <div class="video"><div class="ytwrap" id="ytwrap"><div id="yt"></div></div><div class="fileview" id="fileView" hidden></div></div>
     <div class="card analyser" id="analyser">
       <div class="state" id="state"><span class="dot"></span><span id="stateText">Not listening</span></div>
       <div class="nowrow">
@@ -239,9 +251,9 @@ details.menu summary::-webkit-details-marker{display:none}
   const WORKER = `
     let live = null, chunks = [], total = 0, timer = null;
     const post = (m, t) => self.postMessage(m, t || []);
-    function run(samples, sampleRate, options) {
-      const analysis = YTChords.analyzeAudio(samples, sampleRate, Object.assign({}, options, { onProgress: (p) => post({ type: 'progress', stage: p.stage }) }));
-      post({ type: 'result', analysis });
+    function run(samples, sampleRate, options, job) {
+      const analysis = YTChords.analyzeAudio(samples, sampleRate, Object.assign({}, options, { onProgress: (p) => post({ type: 'progress', stage: p.stage, job }) }));
+      post({ type: 'result', analysis, job });
     }
     self.onmessage = (e) => {
       const m = e.data;
@@ -258,9 +270,11 @@ details.menu summary::-webkit-details-marker{display:none}
           const x = new Float32Array(m.type === 'finish' ? total : 0);
           let o = 0; for (const c of chunks) { if (o + c.length <= x.length) x.set(c, o); o += c.length; }
           chunks = []; total = 0;
-          if (m.type === 'finish') run(x, m.sampleRate, {});
+          if (m.type === 'finish') run(x, m.sampleRate, {}, m.job);
+        } else if (m.type === 'file') {
+          run(m.data, m.sampleRate, {}, m.job);
         }
-      } catch (err) { post({ type: 'error', message: err.message }); }
+      } catch (err) { post({ type: 'error', message: err.message, job: m.job }); }
     };`;
   let engine;
   try {
@@ -276,7 +290,9 @@ details.menu summary::-webkit-details-marker{display:none}
   /* ================= state ================= */
   const S = { analysis: null, meta: {}, source: null, videoId: null, transpose: 0, savedAt: null };
   let cap = null; // active capture session
-  let building = false;
+  let building = false; // { runs, sr, job } while a chart is being built
+  let jobSeq = 0;
+  let media = null, mediaUrl = null; // <audio>/<video> playing an opened file
   let liveSegs = [];
   let yt = null, ytApi = null, ytBroken = false;
   let lastSeg = -1;
@@ -348,7 +364,8 @@ details.menu summary::-webkit-details-marker{display:none}
       const listening = !!cap;
       chart.innerHTML = `<div class="empty"><div>
         <div class="big">${building ? 'Building your chart…' : listening ? 'Listening…' : 'Your chart appears here'}</div>
-        <div>${building ? 'This takes a few seconds.' : listening ? 'The full chart is built when the video ends, or when you press Stop.' : 'Press <b>Start listening</b> and share this tab with tab audio on.'}</div>
+        <div>${building ? 'This takes a few seconds.' : listening ? 'The full chart is built when the video ends, or when you press Stop.'
+          : S.source === 'file' ? 'Open another file to try again.' : 'Press <b>Start listening</b> and share this tab with tab audio on.'}</div>
         <div class="skel">${'<i></i>'.repeat(8)}</div></div></div>`;
       return;
     }
@@ -399,10 +416,13 @@ details.menu summary::-webkit-details-marker{display:none}
   }).observe($('chart'));
 
   /* ================= playback sync ================= */
-  const now = () => (S.source === 'youtube' ? yt?.getCurrentTime?.() ?? 0 : cap ? cap.total / cap.sr : 0);
-  const isPlaying = () => S.source === 'youtube' && yt?.getPlayerState?.() === 1;
+  const now = () => (S.source === 'youtube' ? yt?.getCurrentTime?.() ?? 0 : S.source === 'file' ? media?.currentTime ?? 0 : cap ? cap.total / cap.sr : 0);
+  const isPlaying = () => (S.source === 'youtube' ? yt?.getPlayerState?.() === 1 : S.source === 'file' ? !!media && !media.paused : false);
+  const play = () => (S.source === 'file' ? media?.play().catch(() => {}) : yt?.playVideo?.());
+  const pause = () => (S.source === 'file' ? media?.pause() : yt?.pauseVideo?.());
   function seek(t) {
     if (S.source === 'youtube') { yt?.seekTo?.(t, true); yt?.playVideo?.(); }
+    else if (S.source === 'file' && media) { media.currentTime = t; play(); }
     lastUserScroll = 0;
     tick(true);
   }
@@ -464,8 +484,8 @@ details.menu summary::-webkit-details-marker{display:none}
     seek(((e.clientX - r.left) / r.width) * Math.max(S.analysis.duration, ...S.analysis.segments.map((s) => s.end)));
   });
   document.addEventListener('keydown', (e) => {
-    if (!S.analysis || cap || S.source !== 'youtube' || e.target.closest('input,select,textarea,button,summary')) return;
-    if (e.key === ' ') { e.preventDefault(); isPlaying() ? yt.pauseVideo() : yt.playVideo(); }
+    if (!S.analysis || cap || !['youtube', 'file'].includes(S.source) || e.target.closest('input,select,textarea,button,summary,audio,video')) return;
+    if (e.key === ' ') { e.preventDefault(); isPlaying() ? pause() : play(); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); seek(Math.max(0, now() + (e.key === 'ArrowRight' ? 5 : -5))); }
   });
 
@@ -570,6 +590,7 @@ details.menu summary::-webkit-details-marker{display:none}
   function loadVideo(id, { listen, fresh = false }) {
     if (cap) stopListening(true);
     building = false; // a chart still being built for the previous session is dropped
+    clearMedia();
     msg('');
     Object.assign(S, { analysis: null, meta: { url: `https://www.youtube.com/watch?v=${id}` }, source: 'youtube', videoId: id, transpose: 0, savedAt: null });
     $('capo').value = 'none';
@@ -597,10 +618,11 @@ details.menu summary::-webkit-details-marker{display:none}
     document.body.classList.remove('listening');
     setState(ready ? 'Chart ready' : 'Not listening');
     $('listenLabel').textContent = ready ? 'Analyse again' : 'Start listening';
-    $('listen').hidden = false;
+    const file = S.source === 'file'; // files are analysed straight away, so no listening controls
+    $('listen').hidden = file;
     $('stop').hidden = true;
-    $('other').hidden = false;
-    $('next').textContent = ready ? '' : 'The chart appears after one listen';
+    $('other').hidden = file;
+    $('next').textContent = ready || file ? '' : 'The chart appears after one listen';
   }
 
   /* ================= listening (tab-audio capture) ================= */
@@ -738,12 +760,12 @@ details.menu summary::-webkit-details-marker{display:none}
       return;
     }
     if (c.mode === 'embed') yt?.pauseVideo?.();
-    building = { runs: c.runs, sr: c.sr };
+    building = { runs: c.runs, sr: c.sr, job: ++jobSeq };
     setState('Building chart');
     $('stop').hidden = true;
     msg(steps('chroma'));
     render();
-    engine.send({ type: 'finish', sampleRate: c.sr });
+    engine.send({ type: 'finish', sampleRate: c.sr, job: building.job });
   }
 
   // Map times on the recording's clock back onto the video's clock (handles pauses).
@@ -763,9 +785,14 @@ details.menu summary::-webkit-details-marker{display:none}
   engine.onmessage = (e) => {
     const m = e.data;
     if (m.type === 'live') return onLive(m);
-    if (m.type === 'progress') return STAGES.some(([k]) => k === m.stage) && msg(steps(m.stage));
-    if (m.type === 'error') { building = false; setIdleUi(false); render(); return msg('Analysis failed: ' + esc(m.message), true); }
-    if (m.type !== 'result' || !building) return;
+    const current = building && m.job === building.job; // ignore results from a session that was reset or replaced
+    if (m.type === 'progress') return current && STAGES.some(([k]) => k === m.stage) && msg(steps(m.stage));
+    if (m.type === 'error') {
+      if (m.job != null && !current) return;
+      building = false; setIdleUi(false); render();
+      return msg('Analysis failed: ' + esc(m.message), true);
+    }
+    if (m.type !== 'result' || !current) return;
     const b = building;
     building = false;
     S.analysis = remap(m.analysis, b.runs, b.sr);
@@ -774,7 +801,8 @@ details.menu summary::-webkit-details-marker{display:none}
     render();
     saveCachedNow();
     const n = S.analysis.segments.filter((s) => s.chord.quality !== 'N').length;
-    msg(S.source === 'youtube' ? `Done: ${n} chord changes. Saved, so this video opens instantly next time. Press play to follow along.` : `Done: ${n} chord changes.`);
+    msg(S.source === 'youtube' ? `Done: ${n} chord changes. Saved, so this video opens instantly next time. Press play to follow along.`
+      : S.source === 'file' ? `Done: ${n} chord changes. Press play to follow along.${b.note || ''}` : `Done: ${n} chord changes.`);
   };
 
   /* ================= controls ================= */
@@ -828,10 +856,112 @@ details.menu summary::-webkit-details-marker{display:none}
     return `<div class="bars">${prog.slice(0, 4).map((p, i) => tile(p, i === 2)).join('')}</div><div class="bars">${prog.slice(4).map((p) => tile(p)).join('')}</div>`;
   })();
 
-  if (!navigator.mediaDevices?.getDisplayMedia) {
-    msg('This browser can’t share tab audio, so it can’t listen to videos. Desktop Chrome or Edge can.', true);
+  /* ================= audio files (MP3, M4A, WAV…): decoded and analysed in one go, no sharing ================= */
+  const MAX_FILE_SECS = 20 * 60;
+  const AUDIO_EXT = /\.(mp3|m4a|aac|mp4|wav|ogg|oga|opus|flac|webm)$/i;
+  function clearMedia() {
+    if (media) { media.pause(); media.removeAttribute('src'); media.load(); }
+    if (mediaUrl) URL.revokeObjectURL(mediaUrl);
+    media = mediaUrl = null;
+    $('fileView').replaceChildren();
+    $('fileView').hidden = true;
+    $('ytwrap').hidden = false;
   }
-  window.chordSheetApp = { startListening, stopListening }; // handy for scripting and tests
+  async function decodeFile(file) {
+    const buf = await file.arrayBuffer();
+    try {
+      // Decoding at 22,050 Hz mono keeps memory low; the analyser works at 11,025 Hz anyway.
+      return await new OfflineAudioContext(1, 1, 22050).decodeAudioData(buf.slice(0));
+    } catch {
+      const ctx = new AudioContext();
+      try { return await ctx.decodeAudioData(buf); } finally { ctx.close(); }
+    }
+  }
+  async function openFile(file) {
+    if (!file) return;
+    if (cap) stopListening(true);
+    yt?.pauseVideo?.();
+    clearMedia();
+    const title = file.name.replace(/\.[^.]+$/, '') || file.name;
+    Object.assign(S, { analysis: null, meta: { title }, source: 'file', videoId: null, transpose: 0, savedAt: null });
+    $('capo').value = 'none';
+    $('simplify').checked = false;
+    $('url').value = '';
+    resetAnalyser();
+    showView('work');
+    try { history.replaceState(null, '', location.pathname); } catch {}
+    const job = { runs: [], sr: 0, job: ++jobSeq };
+    building = job;
+    setIdleUi(false);
+    render();
+    if (!/^(audio|video)\//.test(file.type) && !AUDIO_EXT.test(file.name)) {
+      building = false;
+      setState('Not an audio file');
+      render();
+      return msg(`“${esc(file.name)}” isn’t an audio file. Open an MP3, M4A, WAV, OGG or FLAC file.`, true);
+    }
+    // The player: a video file shows its picture, an audio file shows its name.
+    mediaUrl = URL.createObjectURL(file);
+    const isVideo = file.type.startsWith('video/');
+    media = document.createElement(isVideo ? 'video' : 'audio');
+    Object.assign(media, { controls: true, preload: 'auto', src: mediaUrl, playsInline: true });
+    if (!isVideo) {
+      $('fileView').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><div class="fname">${esc(title)}</div>`;
+    }
+    $('fileView').append(media);
+    $('fileView').hidden = false;
+    $('ytwrap').hidden = true;
+    setState('Reading file');
+    msg('Reading the file…');
+    let audio;
+    try { audio = await decodeFile(file); } catch { audio = null; }
+    if (building !== job) return; // reset, or another song opened meanwhile
+    if (!audio) {
+      building = false;
+      setState('Couldn’t read file');
+      render();
+      return msg('This file couldn’t be decoded by your browser. Try an MP3, M4A or WAV file.', true);
+    }
+    if (audio.duration < 8) {
+      building = false;
+      setState('Too short');
+      render();
+      return msg('That file is under 8 seconds long. Open a longer recording.', true);
+    }
+    const n = Math.min(audio.length, Math.floor(MAX_FILE_SECS * audio.sampleRate));
+    const x = new Float32Array(n);
+    for (let k = 0; k < audio.numberOfChannels; k++) {
+      const d = audio.getChannelData(k);
+      for (let i = 0; i < n; i++) x[i] += d[i] / audio.numberOfChannels;
+    }
+    job.sr = audio.sampleRate;
+    if (audio.length > n) job.note = ' Only the first 20 minutes were analysed.';
+    setState('Building chart');
+    msg(steps('chroma'));
+    engine.send({ type: 'file', data: x, sampleRate: audio.sampleRate, job: job.job }, [x.buffer]);
+  }
+  const pickFile = () => $('file').click();
+  $('openFile').addEventListener('click', pickFile);
+  $('openFile2').addEventListener('click', pickFile);
+  $('file').addEventListener('change', () => { const f = $('file').files[0]; $('file').value = ''; openFile(f); });
+  // Drag and drop anywhere on the page.
+  let dragDepth = 0;
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('drop'); } });
+  addEventListener('dragleave', (e) => { if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drop'); } });
+  addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+  addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('drop');
+    openFile(e.dataTransfer.files[0]);
+  });
+
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    msg('This browser can’t share tab audio, so it can’t listen to YouTube videos. Open an MP3 instead, or use desktop Chrome or Edge.', true);
+  }
+  window.chordSheetApp = { startListening, stopListening, openFile }; // handy for scripting and tests
 
   // #VIDEO_ID opens that video (its saved chart, if any). Sharing needs a click, so don't prompt on load.
   const fromHash = location.hash.slice(1);
@@ -847,6 +977,7 @@ details.menu summary::-webkit-details-marker{display:none}
     if (cap) stopListening(true);
     building = false; // a result still on its way is ignored
     yt?.stopVideo?.();
+    clearMedia();
     Object.assign(S, { analysis: null, meta: {}, source: null, videoId: null, transpose: 0, savedAt: null });
     $('url').value = '';
     $('capo').value = 'none';
